@@ -1,10 +1,11 @@
 package com.noxapps.gwemblochat.home
 
 import androidx.compose.runtime.Composable
+import com.noxapps.gwemblochat.chat.ChatViewModel
 
 @Composable
-fun ChatPage(
-    viewModel: ChatViewModel = ChatViewModel()
+fun HomePage(
+    viewModel: HomeViewModel = HomeViewModel()
 ){
 
 }

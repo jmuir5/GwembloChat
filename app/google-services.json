@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "913526058424",
+    "project_id": "gwemblochat",
+    "storage_bucket": "gwemblochat.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:913526058424:android:db7040c6b214510208f34d",
+        "android_client_info": {
+          "package_name": "com.noxapps.gwemblochat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpVJSeeXsc62cyMtvPXpr0uCR4L61-2D8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
