@@ -45,16 +45,17 @@ fun MessageCard(message: Message){
                 .weight(1f)
             )
         }
-        Box(modifier = Modifier
+        Row(modifier = Modifier
             .weight(8f)
-            .clip(chatBubbleShape)
-            .background(cardColor)
-            .padding(8.dp)
-
-
-
-        ){
-            Text(message.message)
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(chatBubbleShape)
+                    .background(cardColor)
+                    .padding(8.dp)
+            ) {
+                Text(message.message)
+            }
         }
         if (!sent){
             Spacer(modifier = Modifier
