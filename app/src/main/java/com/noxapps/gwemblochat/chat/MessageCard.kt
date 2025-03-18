@@ -46,14 +46,15 @@ fun MessageCard(message: Message){
             )
         }
         Row(modifier = Modifier
-            .weight(8f)
+            .weight(8f),
+            horizontalArrangement = arrangement
         ) {
             Box(
                 modifier = Modifier
                     .clip(chatBubbleShape)
                     .background(cardColor)
-                    .padding(8.dp)
-            ) {
+                    .padding(8.dp),
+                ) {
                 Text(message.message)
             }
         }

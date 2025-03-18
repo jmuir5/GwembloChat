@@ -2,7 +2,9 @@ package com.noxapps.gwemblochat.chat
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
@@ -15,21 +17,27 @@ import com.noxapps.gwemblochat.ui.theme.GwembloChatTheme
 fun ChatPage(
     viewModel: ChatViewModel = ChatViewModel()
 ){
-
-    Column(modifier = Modifier
-        .fillMaxWidth()
-    ) {
-        ChatHeader()
-        LazyColumn(modifier = Modifier
-            .weight(1f)
+    Scaffold(
+        topBar = {
+            ChatHeader(viewModel.chatTarget, viewModel.chatTargetProfilePic)
+        }
+    ) { innerPadding ->
+        Column(modifier = Modifier
+            .fillMaxWidth()
         ) {
-            viewModel.messages.forEach{
-                item {
-                    MessageCard(it)
+            LazyColumn(modifier = Modifier
+                .padding(innerPadding)
+                .weight(1f)
+            ) {
+                viewModel.messages.forEach{
+                    item {
+                        MessageCard(it)
+                    }
                 }
             }
+            MessageInput()
         }
-        MessageInput()
+
     }
 }
 
