@@ -31,10 +31,6 @@ fun MessageCard(message: Message){
     } else RoundedCornerShape(20.dp, 20.dp, 20.dp, 4.dp)
     val arrangement = if(sent) Arrangement.End else Arrangement.Start
 
-
-
-
-
     Row(modifier = Modifier
         .fillMaxWidth()
         .padding(4.dp)
