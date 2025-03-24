@@ -1,4 +1,4 @@
-package com.noxapps.familygiftlist.auth
+package com.noxapps.gwemblochat.auth
 
 import android.util.Patterns
 import android.widget.Toast
@@ -13,11 +13,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SelectableDates
@@ -37,13 +37,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.AutofillType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
@@ -51,8 +49,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.noxapps.familygiftlist.R
-import com.noxapps.familygiftlist.data.User
+import com.noxapps.gwemblochat.R
+import com.noxapps.gwemblochat.data.User
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -69,13 +67,13 @@ fun RegisterCard(
 ){
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var firstName by remember { mutableStateOf("") }
-    var lastName by remember { mutableStateOf("") }
+    var userName by remember { mutableStateOf("") }
+    /*var lastName by remember { mutableStateOf("") }
     var birthdayState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis(),
         selectableDates = PastOrPresentSelectableDates
     )
-    var birthdayDialogueState by remember { mutableStateOf(false) }
+    var birthdayDialogueState by remember { mutableStateOf(false) }*/
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -86,14 +84,14 @@ fun RegisterCard(
     var emptyCheck by remember { mutableStateOf(false) }
 
     val fNameError by remember {
-        derivedStateOf { firstName.isEmpty() && emptyCheck }
+        derivedStateOf { userName.isEmpty() && emptyCheck }
     }
-    val lNameError by remember {
+    /*val lNameError by remember {
         derivedStateOf { lastName.isEmpty() && emptyCheck }
     }
     val birthdayError by remember {
         derivedStateOf { birthdayState.selectedDateMillis == null && emptyCheck }
-    }
+    }*/
     val emailMalformedError by remember {
         derivedStateOf { email.isNotEmpty() && !Patterns.EMAIL_ADDRESS.matcher(email).matches() }
     }
@@ -136,7 +134,7 @@ fun RegisterCard(
             Pair(R.drawable.visibility_off_24px, "Password is not visible")
         }
 
-    val (firstNameFocReq, lastNameFocReq, bDayFocReq, emailFocReq, pwFocReq, confFocReq, buttonFocReq) =
+    val (firstNameFocReq, emailFocReq, pwFocReq, confFocReq, buttonFocReq) =
         remember { FocusRequester.createRefs() }
 
     val zoneId = ZoneId.systemDefault()
@@ -150,6 +148,7 @@ fun RegisterCard(
         //First name
         TextField(
             modifier = Modifier
+                .padding(0.dp,4.dp)
                 .fillMaxWidth()
                 .focusRequester(firstNameFocReq)
                 ,/*.autofill(autofillTypes = listOf(AutofillType.PersonFirstName)) {
@@ -157,140 +156,38 @@ fun RegisterCard(
                     firstName = it
                 },*/
             colors = textFieldColors,
-            value = firstName,
-            onValueChange = { if (it.length < 32) firstName = it },
+            value = userName,
+            onValueChange = { if (it.length < 32) userName = it },
             enabled = enabled.value,
             leadingIcon = {
                 Image(
                     painter = painterResource(id = R.drawable.person_24px),
-                    contentDescription = "First Name",
+                    contentDescription = "User Name",
                     colorFilter = textIconColors?.let { ColorFilter.tint(it) }
                 )
             },
             singleLine = true,
-            shape = RectangleShape,
+            shape = RoundedCornerShape(20.dp),
             keyboardOptions = KeyboardOptions(
                 imeAction = ImeAction.Next
             ),
-            keyboardActions = KeyboardActions(
-                onNext = {
-                    lastNameFocReq.requestFocus()
-                }
-            ),
-            label = {
-                if (fNameError)
-                    Text("Name can not be empty")
-                else
-                    Text("First Name")
-            },
-            isError = fNameError
-        )
-        TextField(
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(lastNameFocReq)
-                ,/*.autofill(autofillTypes = listOf(AutofillType.PersonLastName)) {
-                    if (lastName.isEmpty()) bDayFocReq.requestFocus()
-                    lastName = it
-                },*/
-            colors = textFieldColors,
-            value = lastName,
-            onValueChange = { if (it.length < 32) lastName = it },
-            enabled = enabled.value,
-            leadingIcon = {
-                Image(
-                    painter = painterResource(id = R.drawable.person_24px),
-                    contentDescription = "Last Name",
-                    colorFilter = textIconColors?.let { ColorFilter.tint(it) }
-                )
-            },
-            singleLine = true,
-            shape = RectangleShape,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(
-                onNext = {
-                    bDayFocReq.requestFocus()
-                }
-            ),
-            label = {
-                if (lNameError)
-                    Text("Name can not be empty")
-                else
-                    Text("Last Name")
-            },
-            isError = lNameError
-        )
-        //birthday
-        TextField(
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(bDayFocReq)
-                .onFocusChanged {
-                    if (it.isFocused) {
-                        birthdayDialogueState = true
-                    }
-                }
-                .focusable()
-                .clickable {
-                    birthdayDialogueState = true
-                },
-            colors = textFieldColors,
-            value = birthdayState.selectedDateMillis?.let {
-                formatter.format(Instant.ofEpochMilli(it).atZone(zoneId).toLocalDate())
-            }.orEmpty(),
-            onValueChange = {},
-            enabled = enabled.value,
-            leadingIcon = {
-                Image(
-                    painter = painterResource(id = R.drawable.calendar_month_24px),
-                    contentDescription = "Birthday",
-                    colorFilter = textIconColors?.let { ColorFilter.tint(it) }
-                )
-            },
-
-            singleLine = true,
-            shape = RectangleShape,
-            readOnly = true,
-            interactionSource = interactionSource,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(
                 onNext = {
                     emailFocReq.requestFocus()
                 }
             ),
             label = {
-                if (birthdayError)
-                    Text("Birthday can not be empty")
+                if (fNameError)
+                    Text("Name can not be empty")
                 else
-                    Text("Birthday")
+                    Text("User Name")
             },
-            isError = birthdayError
+            isError = fNameError
         )
-        if (interactionSource.collectIsPressedAsState().value) {
-            birthdayDialogueState = true
-        }
-        if (birthdayDialogueState) {
-            DatePickerDialog(
-                onDismissRequest = { birthdayDialogueState = !birthdayDialogueState },
-                confirmButton = {
-                    Button(
-                        modifier = Modifier,
-                        shape = RectangleShape,
-
-                        onClick = {
-                            birthdayDialogueState = !birthdayDialogueState
-                            emailFocReq.requestFocus()
-                        }) {
-                        Text("Confirm")
-                    }
-                }
-            ) {
-                DatePicker(state = birthdayState)
-            }
-        }
         //email
         TextField(
             modifier = Modifier
+                .padding(0.dp,4.dp)
                 .fillMaxWidth()
                 .focusRequester(emailFocReq)
                 ,/*.autofill(autofillTypes = listOf(AutofillType.EmailAddress)) {
@@ -310,7 +207,7 @@ fun RegisterCard(
                 )
             },
             singleLine = true,
-            shape = RectangleShape,
+            shape = RoundedCornerShape(20.dp),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next
@@ -326,6 +223,7 @@ fun RegisterCard(
         //Password
         TextField(
             modifier = Modifier
+                .padding(0.dp,4.dp)
                 .fillMaxWidth()
                 .focusRequester(pwFocReq)
                 ,/*.autofill(autofillTypes = listOf(AutofillType.NewPassword)) {
@@ -361,7 +259,7 @@ fun RegisterCard(
             else
                 PasswordVisualTransformation(),
             singleLine = true,
-            shape = RectangleShape,
+            shape = RoundedCornerShape(20.dp),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Next,
@@ -370,7 +268,6 @@ fun RegisterCard(
             keyboardActions = KeyboardActions(
                 onDone = {
                     confFocReq.requestFocus()
-                    //todo login function
                 }
             ),
             label = { Text(passwordLabelString) },
@@ -381,6 +278,7 @@ fun RegisterCard(
         //Confirm Password
         TextField(
             modifier = Modifier
+                .padding(0.dp,4.dp)
                 .fillMaxWidth()
                 .focusRequester(confFocReq)
                 ,/*.autofill(autofillTypes = listOf(AutofillType.NewPassword)) {
@@ -416,7 +314,7 @@ fun RegisterCard(
             else
                 PasswordVisualTransformation(),
             singleLine = true,
-            shape = RectangleShape,
+            shape = RoundedCornerShape(20.dp),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Next,
@@ -436,12 +334,13 @@ fun RegisterCard(
         )
         Button(
             modifier = Modifier
+                .padding(0.dp,4.dp)
                 .fillMaxWidth()
                 .focusRequester(buttonFocReq)
                 .onFocusChanged {
                     if (it.isFocused) {
                         emptyCheck = true
-                        if ((fNameError || lNameError || birthdayError || passwordsMatchError ||
+                        if ((fNameError || passwordsMatchError ||
                                     passwordMalformedError || emailMalformedError || emailEmptyError ||
                                     passwordEmptyError || confirmPasswordEmptyError)
                         ) {
@@ -454,13 +353,8 @@ fun RegisterCard(
                                 .show()
                         } else {
                             viewModel.register(
-                                firstName = firstName,
-                                lastName = lastName,
+                                userName = userName,
                                 email = email,
-                                birthday = Instant
-                                    .ofEpochMilli(birthdayState.selectedDateMillis!!)
-                                    .atZone(zoneId)
-                                    .toLocalDate(),
                                 password = password,
                                 enableState = enabled,
                                 loggedUser = loggedUser,
@@ -471,13 +365,13 @@ fun RegisterCard(
                     }
                 }
                 .focusable(),
-            shape = RectangleShape,
+            shape = RoundedCornerShape(20.dp),
 
             onClick = {
                 emptyCheck = true
                 //for some reason putting all the errors into a list and checking with
                 // list.contains(true) didnt work. i actually hate this but it works.
-                if ((fNameError || lNameError || birthdayError || passwordsMatchError ||
+                if ((fNameError || passwordsMatchError ||
                             passwordMalformedError || emailMalformedError || emailEmptyError ||
                             passwordEmptyError || confirmPasswordEmptyError)
                 ) {
@@ -488,15 +382,12 @@ fun RegisterCard(
                     ).show()
                 } else {
                     viewModel.register(
-                        firstName = firstName,
-                        lastName = lastName,
+                        userName = userName,
                         email = email,
-                        birthday = Instant.ofEpochMilli(birthdayState.selectedDateMillis!!)
-                            .atZone(zoneId).toLocalDate(),
                         password = password,
                         enableState = enabled,
-                        context = context,
                         loggedUser = loggedUser,
+                        context = context,
                         coroutineScope = coroutineScope
                     )
                 }
@@ -520,7 +411,7 @@ fun RegisterCard(
             Button(
                 modifier = Modifier
                     .weight(1f),
-                shape = RectangleShape,
+                shape = RoundedCornerShape(20.dp),
                 onClick = { registerState.value = !registerState.value }) {
                 Text("Login")
             }

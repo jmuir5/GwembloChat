@@ -1,4 +1,4 @@
-package com.noxapps.familygiftlist.auth
+package com.noxapps.gwemblochat.auth
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
@@ -14,7 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import com.noxapps.familygiftlist.R
+import com.noxapps.gwemblochat.R
 
 @Composable
 fun LogoCard(){

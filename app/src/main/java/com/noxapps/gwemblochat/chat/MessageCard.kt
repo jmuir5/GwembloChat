@@ -68,7 +68,14 @@ fun MessageCard(message: Message){
 @Composable
 fun SentMessageCardPreview(){
     GwembloChatTheme {
-        MessageCard(Message(1,"This is a test  sent message message"))
+        MessageCard(
+            Message(
+                messageId = 0,
+                conversationId = 0,
+                sender = 1,
+                "This is a test  sent message message"
+            )
+        )
     }
 }
 
@@ -76,7 +83,14 @@ fun SentMessageCardPreview(){
 @Composable
 fun ReceivedMessageCardPreview(){
     GwembloChatTheme {
-        MessageCard(Message(0,"This is a received  sent message message"))
+        MessageCard(
+            Message(
+                messageId = 0,
+                conversationId = 0,
+                sender = 0,
+                "This is a test  sent message message"
+            )
+        )
     }
 }
 

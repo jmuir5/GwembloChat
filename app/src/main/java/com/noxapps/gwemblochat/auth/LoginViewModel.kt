@@ -1,4 +1,4 @@
-package com.noxapps.familygiftlist.auth
+package com.noxapps.gwemblochat.auth
 
 import android.app.Activity
 import android.content.Context
@@ -10,13 +10,10 @@ import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
-import com.google.firebase.database.ktx.database
-import com.google.firebase.ktx.Firebase
-import com.noxapps.familygiftlist.navigation.Paths
-import com.noxapps.familygiftlist.data.AppDatabase
-import com.noxapps.familygiftlist.data.FirebaseDBInteractor
-import com.noxapps.familygiftlist.data.GiftList
-import com.noxapps.familygiftlist.data.User
+import com.noxapps.gwemblochat.navigation.Paths
+import com.noxapps.gwemblochat.data.User
+import com.noxapps.gwemblochat.data.AppDatabase
+import com.noxapps.gwemblochat.data.FirebaseDBInteractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -72,7 +69,7 @@ class LoginViewModel(
                             FirebaseDBInteractor
                                 .getUser(user!!.uid){ _, pulledUser->
                                     coroutineScope.launch {
-                                        db.userDao().insertOne(pulledUser)
+                                        db.userDao().insert(pulledUser)
                                         MainScope().launch {
                                             loggedUser.value = pulledUser
                                             navController.navigate(Paths.Home.Path){
@@ -125,10 +122,8 @@ class LoginViewModel(
     }
 
     fun register(
-        firstName:String,
-        lastName:String,
+        userName:String,
         email:String,
-        birthday: LocalDate,
         password:String,
         enableState: MutableState<Boolean>,
         loggedUser: MutableState<User>,
@@ -143,14 +138,11 @@ class LoginViewModel(
                     Log.d("register", "createUserWithEmail:success")
                     val user = auth.currentUser
                     user?.let {
-                        val newUser =  User(it.uid, email, firstName, lastName, birthday.toString())
+                        val newUser =  User(it.uid, email, userName, "")
                         coroutineScope.launch{
-                            db.userDao().insertOne(newUser)
+                            db.userDao().insert(newUser)
                             FirebaseDBInteractor.upsertUser(newUser)
-                            /*firebaseDB
-                                .child(user.uid)
-                                .child("User")
-                                .setValue(newUser)*/
+
                             MainScope().launch {
                                 loggedUser.value = newUser
                                 navController.navigate(Paths.Home.Path) {

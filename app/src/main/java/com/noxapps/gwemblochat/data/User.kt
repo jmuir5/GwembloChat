@@ -1,8 +1,14 @@
 package com.noxapps.gwemblochat.data
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity
 class User(
-    var UserName: String,
-    var messages: List<Message>,
-    var ProfilePic:String
+    @PrimaryKey val userId:String="",
+    val email: String,
+    var userName: String,
+    //var messages: List<Message>,
+    var profilePic:String
 ) {
 }

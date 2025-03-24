@@ -1,4 +1,4 @@
-package com.noxapps.familygiftlist.auth
+package com.noxapps.gwemblochat.auth
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -22,19 +22,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.room.Room
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
-import com.noxapps.familygiftlist.data.AppDatabase
-import com.noxapps.familygiftlist.data.User
-import com.noxapps.familygiftlist.data.sampleData
-import com.noxapps.familygiftlist.navigation.loggedCheck
-import com.noxapps.familygiftlist.ui.theme.FamilyGiftListTheme
+import com.noxapps.gwemblochat.data.AppDatabase
+import com.noxapps.gwemblochat.data.User
+import com.noxapps.gwemblochat.ui.theme.GwembloChatTheme
+import com.noxapps.gwemblochat.data.SampleData
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlin.system.exitProcess
@@ -51,7 +52,7 @@ fun LoginPage(
         navHostController
     )
 ){
-    loggedCheck(navHostController, auth, user.value )
+    //loggedCheck(navHostController, auth, user.value )
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -61,7 +62,11 @@ fun LoginPage(
         focusedTextColor = MaterialTheme.colorScheme.onSurface,
         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor =  Color.Transparent,
+        disabledIndicatorColor = Color.Transparent,
     )
+
     val textIconColor = MaterialTheme.colorScheme.onPrimaryContainer
 
     val scrollState = rememberScrollState()
@@ -118,11 +123,12 @@ fun LoginPage(
 }
 
 
-@SuppressLint("ViewModelConstructorInComposable")
+/*@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true)
 @Composable
 fun LoginPreview() {
-    FamilyGiftListTheme {
+    GwembloChatTheme {
+        FirebaseApp.initializeApp(LocalContext.current)
         val textFieldColors = TextFieldDefaults.colors(
             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
             focusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -137,10 +143,16 @@ fun LoginPreview() {
             LocalContext.current,
             AppDatabase::class.java, "gift-app-test-database"
         ).build()
-        val user = remember{mutableStateOf<User>(sampleData.nullUser)}
+        val user = remember{mutableStateOf<User>(SampleData.nullUser)}
 
 
-        LoginCard(textFieldColors, textIconColor, state,user, LoginViewModel(auth, db, navController))
+        LoginCard(
+            textFieldColors,
+            textIconColor,
+            state,
+            user,
+            LoginViewModel(auth, db, navController)
+        )
     }
 }
 
@@ -148,7 +160,8 @@ fun LoginPreview() {
 @Preview(showBackground = true)
 @Composable
 fun RegisterPreview() {
-    FamilyGiftListTheme {
+    GwembloChatTheme {
+        FirebaseApp.initializeApp(LocalContext.current)
         val textFieldColors = TextFieldDefaults.colors(
             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
             focusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -161,19 +174,27 @@ fun RegisterPreview() {
         val navController = rememberNavController()
         val db = Room.databaseBuilder(
             LocalContext.current,
-            AppDatabase::class.java, "gift-app-test-database"
+            AppDatabase::class.java, "chat-app-test-database"
         ).build()
-        val user = remember{mutableStateOf<User>(sampleData.nullUser)}
+        val user = remember{mutableStateOf<User>(SampleData.nullUser)}
 
 
-        RegisterCard(textFieldColors, textIconColor, state, user, LoginViewModel(auth, db, navController))
+        RegisterCard(
+            textFieldColors,
+            textIconColor,
+            state,
+            user,
+            LoginViewModel(auth, db, navController)
+        )
     }
 }
+
+*/
 
 @Preview(showBackground = true)
 @Composable
 fun LogoPreview() {
-    FamilyGiftListTheme {
+    GwembloChatTheme {
 
         LogoCard()
     }

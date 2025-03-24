@@ -1,4 +1,4 @@
-package com.noxapps.familygiftlist.auth
+package com.noxapps.gwemblochat.auth
 
 import android.util.Patterns
 import android.widget.Toast
@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -28,7 +29,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.AutofillType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -42,8 +42,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.noxapps.familygiftlist.R
-import com.noxapps.familygiftlist.data.User
+import com.noxapps.gwemblochat.R
+import com.noxapps.gwemblochat.data.User
 
 @Composable
 fun LoginCard(
@@ -99,6 +99,7 @@ fun LoginCard(
         //email
         TextField(
             modifier = Modifier
+                .padding(0.dp,4.dp)
                 .fillMaxWidth()
                 .focusRequester(emailFocReq),
                 /*.autofill(autofillTypes = listOf(AutofillType.EmailAddress)) {
@@ -119,7 +120,7 @@ fun LoginCard(
                 )
             },
             singleLine = true,
-            shape = RectangleShape,
+            shape = RoundedCornerShape(20.dp),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next
@@ -136,6 +137,7 @@ fun LoginCard(
         //Password
         TextField(
             modifier = Modifier
+                .padding(0.dp,4.dp)
                 .fillMaxWidth()
                 .focusRequester(pwFocReq)
                 ,/*.autofill(autofillTypes = listOf(AutofillType.Password)) {
@@ -170,7 +172,7 @@ fun LoginCard(
             else
                 PasswordVisualTransformation(),
             singleLine = true,
-            shape = RectangleShape,
+            shape = RoundedCornerShape(20.dp),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done,
@@ -187,6 +189,7 @@ fun LoginCard(
         )
         Button(
             modifier = Modifier
+                .padding(0.dp,4.dp)
                 .fillMaxWidth()
                 .focusRequester(buttonFocReq)
                 .onFocusChanged {
@@ -214,7 +217,7 @@ fun LoginCard(
                     }
                 }
                 .focusable(),
-            shape = RectangleShape,
+            shape = RoundedCornerShape(20.dp),
 
             onClick = {
                 emptyCheck = true
@@ -257,7 +260,7 @@ fun LoginCard(
             Button(
                 modifier = Modifier
                     .weight(1f),
-                shape = RectangleShape,
+                shape = RoundedCornerShape(20.dp),
                 onClick = { loginState.value = !loginState.value }) {
                 Text("Create Account")
             }

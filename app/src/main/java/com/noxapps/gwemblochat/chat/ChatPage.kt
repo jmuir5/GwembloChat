@@ -42,7 +42,7 @@ fun ChatPage(
 }
 
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, heightDp = 700)
 @Composable
 fun ChatPagePreview(){
     GwembloChatTheme {

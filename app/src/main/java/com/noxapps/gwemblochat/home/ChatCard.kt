@@ -1,6 +1,7 @@
 package com.noxapps.gwemblochat.home
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -22,11 +23,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import com.noxapps.gwemblochat.R
 import com.noxapps.gwemblochat.data.Chat
 
 @Composable
-fun ChatCard(chat: Chat){
+fun ChatCard(chat: Chat, navController: NavHostController){
     var maxHeight by remember{ mutableIntStateOf(0) }
 
     Row(modifier = Modifier
@@ -35,6 +38,9 @@ fun ChatCard(chat: Chat){
         //.height(IntrinsicSize.Min)
         .onGloballyPositioned { coordinates->
             if(maxHeight==0)maxHeight = coordinates.size.height
+        }
+        .clickable{
+            navController.navigate("chat")
         }
     ){
         Image(

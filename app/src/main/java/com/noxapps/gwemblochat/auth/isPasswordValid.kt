@@ -1,4 +1,4 @@
-package com.noxapps.familygiftlist.auth
+package com.noxapps.gwemblochat.auth
 
 fun String.isValidPassword(): Boolean {
     if (length < 8) return false
