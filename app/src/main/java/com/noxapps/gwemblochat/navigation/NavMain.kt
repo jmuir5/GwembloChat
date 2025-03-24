@@ -34,7 +34,10 @@ fun NavMain(){
 
     NavHost(navController = navHostController, startDestination = startPoint) {
         composable(Paths.Home.Path) {
-            HomePage(navHostController)
+            HomePage(
+                navController = navHostController,
+                auth = auth
+            )
         }
         composable(Paths.Chat.Path) {
             ChatPage()

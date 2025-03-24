@@ -17,7 +17,6 @@ import com.noxapps.gwemblochat.data.FirebaseDBInteractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 class LoginViewModel(
     val auth: FirebaseAuth,
@@ -67,7 +66,7 @@ class LoginViewModel(
                         } catch (e:Exception){
                             Log.d("login debug", "load failed, pulling data")
                             FirebaseDBInteractor
-                                .getUser(user!!.uid){ _, pulledUser->
+                                .getUserByEmail(user!!.uid){ _, pulledUser->
                                     coroutineScope.launch {
                                         db.userDao().insert(pulledUser)
                                         MainScope().launch {

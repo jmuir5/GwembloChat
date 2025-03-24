@@ -1,28 +1,38 @@
 package com.noxapps.gwemblochat.data
 
+import android.util.Log
 import com.google.android.gms.tasks.Task
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 class FirebaseDBInteractor {
     companion object {
+        const val MESSAGES = "Messages"
+        const val USERS = "Users"
         private val firebaseDB = Firebase.database.reference
         fun upsertUser(user: User){
             firebaseDB
-                .child(user.userId)
-                .child("User")
+                .child(USERS)
+                .child(user.email)
                 .setValue(user)
         }
-        fun getUser(
-            userId:String,
+        fun getUserByEmail(
+            email:String,
             onFail:((exception:Exception)->Unit)? = null,
             onComplete: ((task: Task<DataSnapshot>)->Unit)? = null,
             onSuccess:(result: DataSnapshot, user:User)->Unit,
         ){
             firebaseDB
-                .child(userId)
-                .child("User")
+                .child(USERS)
+                .child(email)
                 .get()
                 .addOnFailureListener(){
                     onFail?.invoke(it)
@@ -38,46 +48,48 @@ class FirebaseDBInteractor {
         }
 
         fun upsertMessage(
-            userId:String,
-            gift:Message,
+            recipientId:String,
+            message:Message,
             listIds:List<Int> = listOf()
         ){
-            //insert gift
+            //insert Message
             firebaseDB
-                .child(userId)
-                .child("Messages")
-                .child(gift.messageId.toString())
-                .setValue(gift)
-            //delete old relationships
-            /*firebaseDB
-                .child(userId)
-                .child("Relationships")
-                .get()
-                .addOnSuccessListener { dataSnapshot ->
-                    dataSnapshot.children.forEach { child ->
-                        child.key?.let {
-                            firebaseDB
-                                .child(userId)
-                                .child("Relationships")
-                                .child(it)
-                                .child(gift.giftId.toString())
-                                .removeValue()
-                        }
-                    }
-                }
-
-            //insert new relationships
-            listIds.forEach { listId ->
-                firebaseDB
-                    .child(userId)
-                    .child("Relationships")
-                    .child(listId.toString())
-                    .child(gift.giftId.toString())
-                    .setValue(true)
-            }*/
+                .child(MESSAGES)
+                .child(recipientId)
+                .child(message.messageId.toString())
+                .setValue(message)
 
         }
-        fun getMessage(
+
+        fun attachMessageListener(
+            auth: FirebaseAuth,
+            db: AppDatabase,
+            coroutineScope: CoroutineScope
+        ) {
+            val messageListener = object : ValueEventListener {
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    // Get Post object and use the values to update the UI
+                    Log.w("Message Listener", "loadPost:onDataChange - started", )
+
+                    while(dataSnapshot.hasChildren()) {
+                        val message = dataSnapshot.getValue(Message::class.java)
+                        coroutineScope.launch { message?.let{db.messageDao().insert(it) }}
+                    }
+                    Log.w("Message Listener", "loadPost:onDataChange - finished", )
+                }
+
+                override fun onCancelled(databaseError: DatabaseError) {
+                    // Getting Post failed, log a message
+                    Log.w("Message Listener", "loadPost:onCancelled", databaseError.toException())
+                }
+            }
+            firebaseDB
+                .child(MESSAGES)
+                .child(auth.currentUser!!.uid)
+                .addValueEventListener(messageListener)
+        }
+
+        fun getMessage( //todo: rewrite with listener
             userId:String,
             giftId:String,
             onFail:((exception:Exception)->Unit)? = null,
@@ -85,8 +97,8 @@ class FirebaseDBInteractor {
             onSuccess:(result: DataSnapshot, gift:Message)->Unit,
             ){
             firebaseDB
+                .child(MESSAGES)
                 .child(userId)
-                .child("Gifts")
                 .child(giftId)
                 .get()
                 .addOnFailureListener(){
@@ -102,7 +114,7 @@ class FirebaseDBInteractor {
 
         }
 
-        fun getAllMessages(
+        fun getAllMessages( //todo: rewrite with listener
             userId:String,
             onFail:((exception:Exception)->Unit)? = null,
             onComplete: ((task: Task<DataSnapshot>)->Unit)? = null,
@@ -124,158 +136,5 @@ class FirebaseDBInteractor {
                 }
 
         }
-
-
-        /*fun deleteMessage(
-            userId: String,
-            message: Message,
-            ) {
-            firebaseDB
-                .child(userId)
-                .child("Gifts")
-                .child(message.gift.giftId.toString())
-                .removeValue()
-
-            message.lists.forEach { list ->
-                firebaseDB
-                    .child(userId)
-                    .child("Relationships")
-                    .child(list.listId.toString())
-                    .child(message.gift.giftId.toString())
-                    .removeValue()
-            }
-        }
-
-        fun upsertList(
-            userId:String,
-            list:GiftList,
-            giftIds:List<Int> = listOf()
-        ){
-            //insert list
-            firebaseDB
-                .child(userId)
-                .child("User")
-                .child(list.listId.toString())
-                .setValue(list)
-
-            //delete old relationships
-            firebaseDB
-                .child(userId)
-                .child("Relationships")
-                .child(list.listId.toString())
-                .removeValue()
-
-            //insert current relationships
-            giftIds.forEach { giftId ->
-                firebaseDB
-                    .child(userId)
-                    .child("Relationships")
-                    .child(list.listId.toString())
-                    .child(giftId.toString())
-                    .setValue(true)
-            }
-
-        }
-
-        fun getList(
-            userId:String,
-            listId:String,
-            onFail:((exception:Exception)->Unit)? = null,
-            onComplete: ((task: Task<DataSnapshot>)->Unit)? = null,
-            onSuccess:(result: DataSnapshot, giftList:GiftList)->Unit
-        ){
-            firebaseDB
-                .child(userId)
-                .child("Gifts")
-                .child(listId)
-                .get()
-                .addOnFailureListener(){
-                    onFail?.invoke(it)
-                }
-                .addOnSuccessListener() {pl ->
-                    val pulledList = pl.getValue(GiftList::class.java)
-                    onSuccess(pl, pulledList!!)
-                }
-                .addOnCompleteListener(){
-                    onComplete?.invoke(it)
-                }
-        }
-
-        fun getAllLists(
-            userId:String,
-            onFail:((exception:Exception)->Unit)? = null,
-            onComplete: ((task: Task<DataSnapshot>)->Unit)? = null,
-            onSuccess:(result: DataSnapshot, lists:List<GiftList>)->Unit,
-        ){
-            firebaseDB
-                .child(userId)
-                .child("Lists")
-                .get()
-                .addOnFailureListener(){
-                    onFail?.invoke(it)
-                }
-                .addOnSuccessListener() {pg ->
-                    val lists = pg.children.mapNotNull { it.getValue(GiftList::class.java) }
-                    onSuccess(pg, lists)
-                }
-                .addOnCompleteListener(){
-                    onComplete?.invoke(it)
-                }
-
-        }
-
-        fun deleteList(
-            userId: String,
-            listObject: ListWithGifts,
-        ) {
-            firebaseDB.child(userId)
-                .child("Lists")
-                .child(listObject.giftList.listId.toString())
-                .removeValue()
-            listObject.gifts.forEach { gift ->
-                firebaseDB.child(userId).child("Relationships")
-                    .child(listObject.giftList.listId.toString())
-                    .child(gift.giftId.toString())
-                    .removeValue()
-            }
-        }
-
-        fun getAllRelationships( //this is incorrect
-            userId:String,
-            onFail:((exception:Exception)->Unit)? = null,
-            onComplete: ((task: Task<DataSnapshot>)->Unit)? = null,
-            onSuccess:(result: DataSnapshot, references:List<GiftListGiftCrossReference>)->Unit,
-        ){
-            firebaseDB
-                .child(userId)
-                .child("Relationships")
-                .get()
-                .addOnFailureListener(){
-                    onFail?.invoke(it)
-                }
-                .addOnSuccessListener() {pr ->
-                    val references = mutableListOf<GiftListGiftCrossReference>()
-                    pr.children.mapNotNull { list ->
-                        val listId = list.key?.toInt()?:0
-                        for(entry in list.children){
-                            val result = entry.getValue(Boolean::class.java)
-                            result?.let {
-                                if (it) {
-                                    val giftId = entry.key?.toInt()?:0
-                                    references.add(GiftListGiftCrossReference(listId, giftId))
-                                }
-                            }
-                        }
-
-                    }
-                    onSuccess(pr, references)
-                }
-                .addOnCompleteListener(){
-                    onComplete?.invoke(it)
-                }
-
-        }
-        */
-
     }
 }

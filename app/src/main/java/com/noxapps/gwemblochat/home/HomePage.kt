@@ -4,13 +4,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.auth.FirebaseAuth
 import com.noxapps.gwemblochat.chat.ChatHeader
 import com.noxapps.gwemblochat.chat.ChatViewModel
 import com.noxapps.gwemblochat.chat.MessageCard
@@ -22,12 +25,23 @@ import kotlin.random.Random
 @Composable
 fun HomePage(
     navController: NavHostController,
-    viewModel: HomeViewModel = HomeViewModel(navController),
+    auth: FirebaseAuth,
+    viewModel: HomeViewModel = HomeViewModel(navController, auth),
 
 ){
     Scaffold(
         topBar = {
-            HomeHeader()
+            HomeHeader(text = "GwembloChat"){
+                DropdownMenuItem(
+                    text = { Text("Sign out") },
+                    onClick = {
+                        auth.signOut()
+                        navController.navigate("login"){
+                            popUpToRoute
+                        }
+                    }
+                )
+            }
         },
         floatingActionButton = {
             AddNewChatButton()
@@ -72,7 +86,7 @@ fun HomePagePreview(){
 
     Scaffold(
         topBar = {
-            HomeHeader()
+            HomeHeader(text = "GwembloChat")
         },
         floatingActionButton = {
             AddNewChatButton()
@@ -98,7 +112,7 @@ fun HomePagePreview(){
 @Preview(showBackground = true)
 @Composable
 fun HomeHeaderPreview(){
-    HomeHeader()
+    HomeHeader(text = "GwembloChat")
 }
 
 @Preview(showBackground = true)
