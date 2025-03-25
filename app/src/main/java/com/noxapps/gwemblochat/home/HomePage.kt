@@ -18,15 +18,24 @@ import com.noxapps.gwemblochat.chat.ChatHeader
 import com.noxapps.gwemblochat.chat.ChatViewModel
 import com.noxapps.gwemblochat.chat.MessageCard
 import com.noxapps.gwemblochat.chat.MessageInput
+import com.noxapps.gwemblochat.data.AppDatabase
 import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.Message
+import kotlinx.coroutines.CoroutineScope
 import kotlin.random.Random
 
 @Composable
 fun HomePage(
     navController: NavHostController,
     auth: FirebaseAuth,
-    viewModel: HomeViewModel = HomeViewModel(navController, auth),
+    db: AppDatabase,
+    coroutineScope: CoroutineScope,
+    viewModel: HomeViewModel = HomeViewModel(
+        navController,
+        auth,
+        db,
+        coroutineScope
+    ),
 
 ){
     Scaffold(
@@ -64,7 +73,7 @@ fun HomePage(
 }
 
 
-
+/*
 @Preview(showBackground = true)
 @Composable
 fun HomePagePreview(){
@@ -132,3 +141,4 @@ fun ChatCardPreview(){
     val navController = rememberNavController()
     ChatCard(chat, navController)
 }
+*/

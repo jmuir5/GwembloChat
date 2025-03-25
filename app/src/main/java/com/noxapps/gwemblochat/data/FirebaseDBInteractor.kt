@@ -70,12 +70,15 @@ class FirebaseDBInteractor {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     // Get Post object and use the values to update the UI
                     Log.w("Message Listener", "loadPost:onDataChange - started", )
-
-                    while(dataSnapshot.hasChildren()) {
+                    var counter = 0
+                    while(dataSnapshot.hasChildren()&&counter<10) {
                         val message = dataSnapshot.getValue(Message::class.java)
                         coroutineScope.launch { message?.let{db.messageDao().insert(it) }}
+                        Log.w("Message Listener", "reading message" )
+
+                        counter++
                     }
-                    Log.w("Message Listener", "loadPost:onDataChange - finished", )
+                    Log.w("Message Listener", "loadPost:onDataChange - finished" )
                 }
 
                 override fun onCancelled(databaseError: DatabaseError) {
