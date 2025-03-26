@@ -28,8 +28,8 @@ class HomeViewModel(
             listOf(
                 Message(
                     messageId = UUID.randomUUID(),
-                    recipientId = 0,
-                    sender = it%2,
+                    recipientId = "0",
+                    sender = "${it%2}",
                     messageNum = 1,
                     "test message $it, ${(0..random.nextInt(100)).map{"a"}}"
                 )

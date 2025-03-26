@@ -8,11 +8,11 @@ import java.util.UUID
 
 @Entity
 data class Message(
-    @PrimaryKey(autoGenerate = true)val messageId: UUID,
-    val recipientId: Int,
-    val sender: Int, //remove?
-    val messageNum: Int,
-    val message: String,
+    @PrimaryKey val messageId: UUID = UUID.randomUUID(),
+    val recipientId: String = "",
+    val sender: String = "", //remove?
+    val messageNum: Int = 0,
+    val message: String = "",
 ) {
 
 }

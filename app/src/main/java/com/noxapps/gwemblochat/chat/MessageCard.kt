@@ -19,10 +19,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.noxapps.gwemblochat.data.Message
 import com.noxapps.gwemblochat.ui.theme.GwembloChatTheme
+import java.util.UUID
 
 @Composable
-fun MessageCard(message: Message){
-    val sent = message.sender==1
+fun MessageCard(message: Message, myId:String){
+    val sent = message.sender==myId
     val cardColor = if(sent){
         MaterialTheme.colorScheme.primary
     } else MaterialTheme.colorScheme.secondaryContainer
@@ -68,13 +69,15 @@ fun MessageCard(message: Message){
 @Composable
 fun SentMessageCardPreview(){
     GwembloChatTheme {
+        val sameId = "same"
         MessageCard(
             Message(
-                messageId = 0,
-                conversationId = 0,
-                sender = 1,
-                "This is a test  sent message message"
-            )
+                messageId = UUID.randomUUID(),
+                recipientId = "different",
+                sender = sameId,
+                messageNum = 1,
+                "test message"
+            ), sameId
         )
     }
 }
@@ -85,11 +88,12 @@ fun ReceivedMessageCardPreview(){
     GwembloChatTheme {
         MessageCard(
             Message(
-                messageId = 0,
-                conversationId = 0,
-                sender = 0,
-                "This is a test  sent message message"
-            )
+                messageId = UUID.randomUUID(),
+                recipientId = "id1",
+                sender = "id2",
+                messageNum = 1,
+                "test message"
+            ), "id1"
         )
     }
 }

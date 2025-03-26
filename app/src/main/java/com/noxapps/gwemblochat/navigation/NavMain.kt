@@ -3,6 +3,7 @@ package com.noxapps.gwemblochat.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -14,6 +15,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.noxapps.gwemblochat.auth.LoginPage
 import com.noxapps.gwemblochat.chat.ChatPage
+import com.noxapps.gwemblochat.chat.NewChatPage
 import com.noxapps.gwemblochat.data.AppDatabase
 import com.noxapps.gwemblochat.data.SampleData
 import com.noxapps.gwemblochat.home.HomePage
@@ -22,7 +24,7 @@ import com.noxapps.gwemblochat.home.HomePage
 fun NavMain(){
     val navHostController = rememberNavController()
     val context = LocalContext.current
-    //val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope()
     val db = Room.databaseBuilder(
         context,
         AppDatabase::class.java, "gift-app-database"
@@ -36,18 +38,30 @@ fun NavMain(){
         composable(Paths.Home.Path) {
             HomePage(
                 navController = navHostController,
-                auth = auth
+                auth = auth,
+                db = db,
+                coroutineScope = coroutineScope,
             )
         }
         composable(Paths.Chat.Path) {
-            ChatPage()
+            ChatPage(
+                auth = auth
+            )
         }
         composable(Paths.Login.Path) {
             LoginPage(
-                auth,
-                currentUser,
+                auth = auth,
+                user = currentUser,
+                db = db,
+                navHostController = navHostController
+            )
+        }
+        composable(Paths.NewChat.Path) {
+            NewChatPage(
                 db,
-                navHostController
+                coroutineScope,
+                auth,
+                context
             )
         }
     }

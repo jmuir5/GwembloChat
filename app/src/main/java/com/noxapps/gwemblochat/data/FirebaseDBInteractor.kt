@@ -12,6 +12,7 @@ import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class FirebaseDBInteractor {
     companion object {
@@ -21,7 +22,7 @@ class FirebaseDBInteractor {
         fun upsertUser(user: User){
             firebaseDB
                 .child(USERS)
-                .child(user.email)
+                .child(user.email.replace(".", ""))
                 .setValue(user)
         }
         fun getUserByEmail(
@@ -32,13 +33,17 @@ class FirebaseDBInteractor {
         ){
             firebaseDB
                 .child(USERS)
-                .child(email)
+                .child(email.replace(".", ""))
                 .get()
                 .addOnFailureListener(){
                     onFail?.invoke(it)
                 }
                 .addOnSuccessListener() {pu ->
                     val pulledUser = pu.getValue(User::class.java)
+                    if (pulledUser==null){
+                        onFail?.invoke(Exception("User not found"))
+                    }
+                    Log.d("PulledUser", pulledUser.toString())
                     onSuccess(pu, pulledUser!!)
                     //onSuccess?.invoke(it)
                 }
@@ -48,14 +53,12 @@ class FirebaseDBInteractor {
         }
 
         fun upsertMessage(
-            recipientId:String,
             message:Message,
-            listIds:List<Int> = listOf()
         ){
             //insert Message
             firebaseDB
                 .child(MESSAGES)
-                .child(recipientId)
+                .child(message.recipientId)
                 .child(message.messageId.toString())
                 .setValue(message)
 
@@ -73,7 +76,7 @@ class FirebaseDBInteractor {
                     var counter = 0
                     while(dataSnapshot.hasChildren()&&counter<10) {
                         val message = dataSnapshot.getValue(Message::class.java)
-                        coroutineScope.launch { message?.let{db.messageDao().insert(it) }}
+                        coroutineScope.launch { Log.d("message status", message?.let{db.messageDao().insert(it) }.toString())}
                         Log.w("Message Listener", "reading message" )
 
                         counter++

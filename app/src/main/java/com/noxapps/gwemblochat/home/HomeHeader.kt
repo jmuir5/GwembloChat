@@ -68,7 +68,7 @@ fun HomeHeader(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                dropDownContent
+                dropDownContent()
             }
         }
     }

@@ -6,9 +6,9 @@ import androidx.room.PrimaryKey
 @Entity
 class User(
     @PrimaryKey val userId:String="",
-    val email: String,
-    var userName: String,
+    val email: String = "",
+    var userName: String = "",
     //var messages: List<Message>,
-    var profilePic:String
+    var profilePic:String = ""
 ) {
 }

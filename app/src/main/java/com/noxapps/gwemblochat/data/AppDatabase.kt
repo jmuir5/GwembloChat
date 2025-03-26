@@ -4,7 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [Message::class, User::class, UserMessageCrossReference::class], version = 1) //
+@Database(entities = [Message::class, User::class, UserMessageCrossReference::class], version = 2) //
 //@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao

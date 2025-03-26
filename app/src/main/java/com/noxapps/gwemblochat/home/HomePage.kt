@@ -1,7 +1,5 @@
 package com.noxapps.gwemblochat.home
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.DropdownMenuItem
@@ -9,20 +7,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
-import com.noxapps.gwemblochat.chat.ChatHeader
-import com.noxapps.gwemblochat.chat.ChatViewModel
-import com.noxapps.gwemblochat.chat.MessageCard
-import com.noxapps.gwemblochat.chat.MessageInput
 import com.noxapps.gwemblochat.data.AppDatabase
-import com.noxapps.gwemblochat.data.Chat
-import com.noxapps.gwemblochat.data.Message
 import kotlinx.coroutines.CoroutineScope
-import kotlin.random.Random
 
 @Composable
 fun HomePage(
@@ -53,7 +41,7 @@ fun HomePage(
             }
         },
         floatingActionButton = {
-            AddNewChatButton()
+            AddNewChatButton(navController)
         },
     ) { innerPadding ->
         LazyColumn(modifier = Modifier

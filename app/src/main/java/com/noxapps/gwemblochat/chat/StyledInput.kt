@@ -1,7 +1,5 @@
 package com.noxapps.gwemblochat.chat
 
-import android.widget.EditText
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,24 +9,24 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.MutableState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.noxapps.gwemblochat.R
 
 @Composable
-fun MessageInput(){
-    var message by remember { mutableStateOf("") }
+fun StyledInput(
+    message:MutableState<String>,
+    labelText:String? = null,
+    leadingIcon:@Composable (() -> Unit)? = null,
+    enabled: Boolean,
+    onSend:() -> Unit){
+    //var message = remember { mutableStateOf("") }
     var inputColors = TextFieldDefaults.colors(
         focusedIndicatorColor = Color.Transparent,
         unfocusedIndicatorColor =  Color.Transparent,
@@ -37,26 +35,31 @@ fun MessageInput(){
     Row(modifier = Modifier
         .fillMaxWidth()
         .background(Color.Transparent)
-        .padding(4.dp)
+        .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         TextField(modifier = Modifier
             .weight(1f),
-            value = message,
+            value = message.value,
             onValueChange = {
                 if (it.length <= 1024) {
-                    message = it
+                    message.value = it
                 }
             },
+            leadingIcon = leadingIcon,
             label = {
-                Text("Message")
+                labelText?.let{Text(it)}
             },
             shape = RoundedCornerShape(20.dp),
-            colors = inputColors
+            colors = inputColors,
+            enabled = enabled
         )
         IconButton(
             onClick = {
-                //send message
+                onSend()
+                message.value = ""
             },
+            enabled = enabled
 
         ) {
             Icon(
@@ -66,4 +69,20 @@ fun MessageInput(){
             )
         }
     }
+}
+
+@Composable
+fun SearchInput(message:MutableState<String>, enabled:Boolean = true, onSearch:() -> Unit, ){
+    StyledInput(
+        message = message,
+        leadingIcon = {
+            Icon(
+                painter = painterResource(id = R.drawable.search_24px),
+                contentDescription = "search",
+            )
+        },
+        labelText = "Search",
+        enabled = enabled,
+        onSend = onSearch
+    )
 }
