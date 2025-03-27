@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.google.firebase.auth.FirebaseAuth
+import com.noxapps.gwemblochat.data.AppDatabase
 import com.noxapps.gwemblochat.data.FirebaseDBInteractor
 import com.noxapps.gwemblochat.data.Message
 import com.noxapps.gwemblochat.ui.theme.GwembloChatTheme
@@ -21,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 fun ChatPage(
     auth: FirebaseAuth,
     coroutineScope: CoroutineScope,
+    db: AppDatabase,
     viewModel: ChatViewModel = ChatViewModel()
 ){
 

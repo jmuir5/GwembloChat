@@ -72,7 +72,8 @@ fun SentMessageCardPreview(){
         val sameId = "same"
         MessageCard(
             Message(
-                messageId = UUID.randomUUID(),
+                messageId = UUID.randomUUID().toString(),
+                remoteId = "0",
                 recipientId = "different",
                 sender = sameId,
                 messageNum = 1,
@@ -88,7 +89,8 @@ fun ReceivedMessageCardPreview(){
     GwembloChatTheme {
         MessageCard(
             Message(
-                messageId = UUID.randomUUID(),
+                messageId = UUID.randomUUID().toString(),
+                remoteId = "0",
                 recipientId = "id1",
                 sender = "id2",
                 messageNum = 1,

@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.google.firebase.auth.FirebaseAuth
 import com.noxapps.gwemblochat.data.AppDatabase
+import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.FirebaseDBInteractor
 import com.noxapps.gwemblochat.data.Message
 import com.noxapps.gwemblochat.data.User
@@ -25,6 +26,7 @@ fun NewChatPage(
     db: AppDatabase,
     coroutineScope: CoroutineScope,
     auth: FirebaseAuth,
+    user:User,
     context: Context
 ){
     val searchTerm = remember{mutableStateOf("")}
@@ -67,6 +69,7 @@ fun NewChatPage(
                 val message = auth.currentUser?.let {currentUser ->
                     recipient.value?.let { recipient ->
                         Message(
+                            remoteId = currentUser.uid,
                             recipientId = recipient.userId,
                             sender = currentUser.uid,
                             messageNum = 0,
@@ -74,10 +77,28 @@ fun NewChatPage(
                         )
                     }
                 }
-                coroutineScope.launch { message?.let { db.messageDao().insert(it) } }
+                val newChat = recipient.value?.let { recipient ->
+                    message?.let { msg ->
+                        auth.currentUser?.let {
+                            Chat(
+                                ownerId = it.uid,
+                                partnerId = recipient.userId,
+                                lastMessageId = msg.messageId)
+                        }
+                    }
+                }
+                coroutineScope.launch {
+                    try{recipient.value?.let{db.userDao().insert(it)}}
+                    catch (e:Exception){
+                        Log.d("NewChatPage", "error inserting user: $e")
+                    }
+                    message?.let { db.messageDao().insert(it) }
+                    newChat?.let { db.chatDao().insert(it) }
+                }
                 message?.let {
-                    FirebaseDBInteractor.upsertMessage(
-                        message = it
+                    FirebaseDBInteractor.upsertMessageRequest(
+                        message = it,
+                        sender = user
                     )
                 }
 

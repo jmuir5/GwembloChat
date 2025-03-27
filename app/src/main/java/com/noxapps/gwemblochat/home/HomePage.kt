@@ -6,10 +6,14 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.noxapps.gwemblochat.data.AppDatabase
+import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndLastMessage
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
@@ -26,6 +30,7 @@ fun HomePage(
     ),
 
 ){
+    var chatList = viewModel.getAll().collectAsState(initial = emptyList())
     Scaffold(
         topBar = {
             HomeHeader(text = "GwembloChat"){
@@ -50,7 +55,7 @@ fun HomePage(
             item{
                 ClickableSearchBar()
             }
-            viewModel.chats.forEach{
+            chatList.value.forEach{
                 item {
                     ChatCard(it, navController)
                 }

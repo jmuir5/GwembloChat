@@ -13,7 +13,8 @@ class ChatViewModel(
     val random = Random(1)
     val messages = (1..10).map{
         Message(
-            messageId = UUID.randomUUID(),
+            messageId = UUID.randomUUID().toString(),
+            remoteId = "0",
             recipientId = "0",
             sender = "${it%2}",
             messageNum = it,

@@ -17,6 +17,7 @@ import com.noxapps.gwemblochat.auth.LoginPage
 import com.noxapps.gwemblochat.chat.ChatPage
 import com.noxapps.gwemblochat.chat.NewChatPage
 import com.noxapps.gwemblochat.data.AppDatabase
+import com.noxapps.gwemblochat.data.FirebaseDBInteractor
 import com.noxapps.gwemblochat.data.SampleData
 import com.noxapps.gwemblochat.home.HomePage
 
@@ -34,6 +35,8 @@ fun NavMain(){
     val currentUser = remember { mutableStateOf( SampleData.nullUser ) }
     val startPoint = if(auth.currentUser == null) Paths.Login.Path else Paths.Home.Path
 
+
+
     NavHost(navController = navHostController, startDestination = startPoint) {
         composable(Paths.Home.Path) {
             HomePage(
@@ -45,7 +48,9 @@ fun NavMain(){
         }
         composable(Paths.Chat.Path) {
             ChatPage(
-                auth = auth
+                auth = auth,
+                coroutineScope = coroutineScope,
+                db = db,
             )
         }
         composable(Paths.Login.Path) {
@@ -61,6 +66,7 @@ fun NavMain(){
                 db,
                 coroutineScope,
                 auth,
+                currentUser.value,
                 context
             )
         }

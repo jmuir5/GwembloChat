@@ -10,6 +10,7 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -17,6 +18,8 @@ import java.util.UUID
 class FirebaseDBInteractor {
     companion object {
         const val MESSAGES = "Messages"
+        const val MESSAGESREQS = "MessageRequests"
+
         const val USERS = "Users"
         private val firebaseDB = Firebase.database.reference
         fun upsertUser(user: User){
@@ -63,6 +66,26 @@ class FirebaseDBInteractor {
                 .setValue(message)
 
         }
+        fun upsertMessageRequest(
+            message:Message,
+            sender:User
+        ){
+            //insert Message
+            firebaseDB
+                .child(MESSAGESREQS)
+                .child(message.recipientId)
+                .child(message.messageId.toString())
+                .child("message")
+                .setValue(message)
+
+            firebaseDB
+                .child(MESSAGESREQS)
+                .child(message.recipientId)
+                .child(message.messageId.toString())
+                .child("user")
+                .setValue(sender)
+
+        }
 
         fun attachMessageListener(
             auth: FirebaseAuth,
@@ -73,14 +96,25 @@ class FirebaseDBInteractor {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     // Get Post object and use the values to update the UI
                     Log.w("Message Listener", "loadPost:onDataChange - started", )
-                    var counter = 0
-                    while(dataSnapshot.hasChildren()&&counter<10) {
-                        val message = dataSnapshot.getValue(Message::class.java)
-                        coroutineScope.launch { Log.d("message status", message?.let{db.messageDao().insert(it) }.toString())}
-                        Log.w("Message Listener", "reading message" )
 
-                        counter++
+                    //val message = dataSnapshot.children.first().getValue(Message::class.java)
+                    //Log.w("Message Listener", "reading message" )
+                    //Log.w("Message Listener", "dataSnapshot: $dataSnapshot" )
+                    //Log.w("Message Listener", "dataSnapshot.children: ${dataSnapshot.children}" )
+
+                    //Log.w("Message Listener", "dataSnapshot.children.first(): ${dataSnapshot.children.first()}" )
+
+                    if(dataSnapshot.hasChildren()){
+                        val message = dataSnapshot.children.first().getValue(Message::class.java)
+                        coroutineScope.launch { Log.d("message status", message?.let{db.messageDao().insert(it) }.toString())}
+
                     }
+
+
+
+
+                    //dataSnapshot.children.first().ref.removeValue()
+
                     Log.w("Message Listener", "loadPost:onDataChange - finished" )
                 }
 
@@ -91,6 +125,73 @@ class FirebaseDBInteractor {
             }
             firebaseDB
                 .child(MESSAGES)
+                .child(auth.currentUser!!.uid)
+                .addValueEventListener(messageListener)
+        }
+
+        fun attachMessageRequestListener(
+            auth: FirebaseAuth,
+            db: AppDatabase,
+            coroutineScope: CoroutineScope
+        ){
+            val messageListener = object : ValueEventListener {
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    // Get Post object and use the values to update the UI
+                    Log.w("Message request Listener", "loadPost:onDataChange - started", )
+                    //val message = dataSnapshot.children.first().getValue(Message::class.java)
+                    //Log.w("Message Listener", "reading message requests" )
+                   // Log.w("Message Listener", "dataSnapshot: $dataSnapshot" )
+                    //Log.w("Message Listener", "dataSnapshot.children: ${dataSnapshot.children}" )
+
+                    //Log.w("Message Listener", "dataSnapshot.children.first(): ${dataSnapshot.children.first()}" )
+                    if(dataSnapshot.hasChildren()){
+                        val messageRequest = dataSnapshot.children.first().getValue(MessageRequest::class.java)
+                        messageRequest?.let {
+                            val newMessage = Message(it.message)
+                            val chat = auth.currentUser?.let {
+                                Chat(
+                                    ownerId = it.uid,
+                                    partnerId = messageRequest.user.userId,
+                                    lastMessageId = newMessage.messageId
+                                )
+                            }
+                            coroutineScope.launch {
+                                try {
+                                    db.messageDao().insert(newMessage)
+                                    try{
+                                        db.userDao().insert(it.user)
+                                    }
+                                    catch (e: Exception){
+                                        Log.d("messageRequester", "failed to insert, $e")
+                                    }
+                                    chat?.let { db.chatDao().insert(it) }
+                                    MainScope().launch{
+                                        dataSnapshot.children.first().ref.removeValue()
+                                    }
+                                }
+                                catch (e: Exception){
+                                    Log.d("messageRequester", "failed to insert, $e")
+                                }
+                            }
+                        }
+
+
+
+
+                    }
+
+
+
+                    Log.w("Message request Listener", "loadPost:onDataChange - finished" )
+                }
+
+                override fun onCancelled(databaseError: DatabaseError) {
+                    // Getting Post failed, log a message
+                    Log.w("Message Listener", "loadPost:onCancelled", databaseError.toException())
+                }
+            }
+            firebaseDB
+                .child(MESSAGESREQS)
                 .child(auth.currentUser!!.uid)
                 .addValueEventListener(messageListener)
         }

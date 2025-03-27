@@ -27,9 +27,10 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.noxapps.gwemblochat.R
 import com.noxapps.gwemblochat.data.Chat
+import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndLastMessage
 
 @Composable
-fun ChatCard(chat: Chat, navController: NavHostController){
+fun ChatCard(chat: ChatWithUserAndLastMessage, navController: NavHostController){
     var maxHeight by remember{ mutableIntStateOf(0) }
 
     Row(modifier = Modifier
@@ -52,7 +53,7 @@ fun ChatCard(chat: Chat, navController: NavHostController){
         Column(modifier = Modifier.padding(8.dp, 0.dp)){
             Row(){
                 Text(
-                    text = chat.name,
+                    text = chat.user.userName,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -64,7 +65,7 @@ fun ChatCard(chat: Chat, navController: NavHostController){
                 )
             }
             Text(
-                text = chat.messages.last().message,
+                text = chat.lastMessage.message,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyLarge

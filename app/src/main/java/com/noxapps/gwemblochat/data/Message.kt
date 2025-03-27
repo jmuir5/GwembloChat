@@ -8,11 +8,17 @@ import java.util.UUID
 
 @Entity
 data class Message(
-    @PrimaryKey val messageId: UUID = UUID.randomUUID(),
+    @PrimaryKey val messageId: String = UUID.randomUUID().toString(),
+    val remoteId: String = "",
     val recipientId: String = "",
     val sender: String = "", //remove?
     val messageNum: Int = 0,
     val message: String = "",
 ) {
-
+    constructor(oldMessage: Message) : this(
+        remoteId = oldMessage.remoteId,
+        recipientId = oldMessage.recipientId,
+        sender = oldMessage.sender,
+        messageNum = oldMessage.messageNum,
+    )
 }
