@@ -30,7 +30,7 @@ fun HomePage(
     ),
 
 ){
-    var chatList = viewModel.getAll().collectAsState(initial = emptyList())
+    val chatList = viewModel.getAll().collectAsState(initial = emptyList())
     Scaffold(
         topBar = {
             HomeHeader(text = "GwembloChat"){

@@ -12,17 +12,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.noxapps.gwemblochat.data.AppDatabase
 import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.FirebaseDBInteractor
 import com.noxapps.gwemblochat.data.Message
 import com.noxapps.gwemblochat.data.User
+import com.noxapps.gwemblochat.navigation.Paths
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 @Composable
 fun NewChatPage(
+    navController: NavController,
     db: AppDatabase,
     coroutineScope: CoroutineScope,
     auth: FirebaseAuth,
@@ -42,17 +46,61 @@ fun NewChatPage(
                 message = searchTerm,
                 enabled = enabled,
                 onSearch = {
-                    enabled = false
-                    FirebaseDBInteractor.getUserByEmail(
-                        email = searchTerm.value,
-                        onFail = {
-                            //onFail
-                            Toast.makeText(context, "User not found", Toast.LENGTH_SHORT).show()
-                            enabled = true
+                    if(searchTerm.value.replace(".", "") == auth.currentUser?.email?.replace(".", "")){
+                        Toast.makeText(
+                            context,
+                            "Hey, Thats Me!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        searchTerm.value = ""
+                    }
+                    else {
+                        val searchHolder = searchTerm.value
+                        Log.d("NewChatSearch Term", searchTerm.value)
+
+                        enabled = false
+                        coroutineScope.launch {
+                            val localUser: User? = db.userDao().getOneByEmail(searchHolder)
+                            val existingChat:Chat? = db.chatDao().getChatByIds(auth.currentUser!!.uid, localUser!!.userId)
+                            if(existingChat != null) {
+                                Log.d("NewChatPage", "existing chat: $existingChat")
+                                navController.navigate("${Paths.Chat.Path}/${existingChat.id}"){
+                                    //todo pop last page
+                                }
+                            }
+                            MainScope().launch {
+                                Log.d("NewChatPage", "localUser: $localUser")
+                                Log.d("NewChatPage", "localUser: ${user.userId}")
+                                Log.d("NewChatPage", "localUser: ${user.userName}")
+                                Log.d("NewChatPage", "localUser: ${user.email}")
+                                if (localUser != null) {
+                                    recipient.value = localUser
+                                    //return@launch
+                                } else {
+                                    Log.d("NewChatSearch Term", searchHolder)
+
+                                    FirebaseDBInteractor.getUserByEmail(
+                                        email = searchHolder,
+                                        onFail = {
+                                            //onFail
+                                            Toast.makeText(
+                                                context,
+                                                "User not found",
+                                                Toast.LENGTH_SHORT
+                                            )
+                                                .show()
+                                            enabled = true
+                                        }
+                                    ) { _, user ->
+                                        Log.d("NewChatPage", "user found: $user")
+                                        Log.d("NewChatPage", "user found: ${user.userId}")
+                                        Log.d("NewChatPage", "user found: ${user.userName}")
+                                        Log.d("NewChatPage", "user found: ${user.email}")
+                                        recipient.value = user
+                                    }
+                                }
+                            }
                         }
-                    ) { _, user ->
-                        Log.d("NewChatPage", "user found: $user")
-                        recipient.value = user
                     }
                 }
             )
@@ -67,6 +115,17 @@ fun NewChatPage(
                 labelText = "Message"
             ) {
                 val message = auth.currentUser?.let {currentUser ->
+                    recipient.value?.let { recipient ->
+                        Message(
+                            remoteId = recipient.userId,
+                            recipientId = recipient.userId,
+                            sender = currentUser.uid,
+                            messageNum = 0,
+                            message = firstMessage.value
+                        )
+                    }
+                }
+                val sentMessage = auth.currentUser?.let {currentUser ->
                     recipient.value?.let { recipient ->
                         Message(
                             remoteId = currentUser.uid,
@@ -87,20 +146,33 @@ fun NewChatPage(
                         }
                     }
                 }
+                sentMessage?.let {
+                    FirebaseDBInteractor.upsertMessageRequest(
+                        message = it,
+                        sender = user
+                    )
+                }
                 coroutineScope.launch {
                     try{recipient.value?.let{db.userDao().insert(it)}}
                     catch (e:Exception){
                         Log.d("NewChatPage", "error inserting user: $e")
                     }
                     message?.let { db.messageDao().insert(it) }
-                    newChat?.let { db.chatDao().insert(it) }
+                    newChat?.let {
+                        val newId = db.chatDao().insert(it).toInt()
+                        Log.d("NewChatPage", "chatID: $it.id")
+
+                        MainScope().launch{
+                            navController.navigate("${Paths.Chat.Path}/${newId}"){
+                                //todo pop last page
+                            }
+                        }
+                    }
+
                 }
-                message?.let {
-                    FirebaseDBInteractor.upsertMessageRequest(
-                        message = it,
-                        sender = user
-                    )
-                }
+
+
+
 
             }
         }

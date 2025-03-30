@@ -66,11 +66,23 @@ class LoginViewModel(
                         } catch (e:Exception){
                             Log.d("login debug", "load failed, pulling data")
                             FirebaseDBInteractor
-                                .getUserByEmail(user!!.uid){ _, pulledUser->
+                                .getUserByEmail(
+                                    email = email,
+                                    onFail = {
+                                        Toast.makeText(context, "Failed to pull user from database", Toast.LENGTH_SHORT)
+                                            .show()
+                                        auth.signOut()
+                                        enableState.value = true
+
+                                    }
+                                ){ _, pulledUser->
+                                    Log.d("login debug", "downloadedUser: $pulledUser, inserting")
                                     coroutineScope.launch {
                                         db.userDao().insert(pulledUser)
                                         MainScope().launch {
                                             loggedUser.value = pulledUser
+                                            Log.d("login debug", "inserted, going home")
+
                                             navController.navigate(Paths.Home.Path){
                                                 popUpTo(Paths.Home.Path) {
                                                     inclusive=true

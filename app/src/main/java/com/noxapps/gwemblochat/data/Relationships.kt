@@ -2,6 +2,7 @@ package com.noxapps.gwemblochat.data
 
 import androidx.room.Embedded
 import androidx.room.Relation
+import kotlinx.coroutines.flow.Flow
 
 class Relationships {
     /*data class UserWithMessages(

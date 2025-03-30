@@ -5,16 +5,24 @@ import androidx.room.PrimaryKey
 import java.util.UUID
 
 @Entity
-class Chat(
+data class Chat(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val ownerId: String = "",
     val partnerId: String = "",
-    var lastMessageId: String = UUID.randomUUID().toString(),
+    val lastMessageId: String = UUID.randomUUID().toString(),
+    val activated : Boolean=true,
+
     //user id
     //messages
     //encrypted messages
     //last message timestamp(indexed)
     //last message
-
 ) {
+    constructor(chat:Chat, messageId: String) : this(
+        id = chat.id,
+        ownerId = chat.ownerId,
+        partnerId = chat.partnerId,
+        lastMessageId = messageId
+
+    )
 }

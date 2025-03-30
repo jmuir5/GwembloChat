@@ -42,12 +42,20 @@ class FirebaseDBInteractor {
                     onFail?.invoke(it)
                 }
                 .addOnSuccessListener() {pu ->
+                    Log.d("PulledUserRaw", pu.toString())
+                    Log.d("PulledUserRawKids", pu.children.toString())
+                    Log.d("PulledUserRawRef", pu.ref.toString())
+
+
                     val pulledUser = pu.getValue(User::class.java)
                     if (pulledUser==null){
+                        Log.d("PulledUser", "failed null check")
                         onFail?.invoke(Exception("User not found"))
                     }
-                    Log.d("PulledUser", pulledUser.toString())
-                    onSuccess(pu, pulledUser!!)
+                    else {
+                        Log.d("PulledUser", pulledUser.toString())
+                        onSuccess(pu, pulledUser)
+                    }
                     //onSuccess?.invoke(it)
                 }
                 .addOnCompleteListener(){
@@ -105,8 +113,14 @@ class FirebaseDBInteractor {
                     //Log.w("Message Listener", "dataSnapshot.children.first(): ${dataSnapshot.children.first()}" )
 
                     if(dataSnapshot.hasChildren()){
-                        val message = dataSnapshot.children.first().getValue(Message::class.java)
-                        coroutineScope.launch { Log.d("message status", message?.let{db.messageDao().insert(it) }.toString())}
+                        val message = dataSnapshot.children.first().getValue(Message::class.java)?.let { Message(it) }
+                        coroutineScope.launch {
+                            message?.let{
+                                db.messageDao().insert(it)
+                                val chat = db.chatDao().getChatByIds(it.sender, it.recipientId)
+                                db.chatDao().update(Chat(chat, it.messageId))
+                            }
+                        }
 
                     }
 
@@ -147,17 +161,20 @@ class FirebaseDBInteractor {
                     if(dataSnapshot.hasChildren()){
                         val messageRequest = dataSnapshot.children.first().getValue(MessageRequest::class.java)
                         messageRequest?.let {
-                            val newMessage = Message(it.message)
-                            val chat = auth.currentUser?.let {
-                                Chat(
-                                    ownerId = it.uid,
-                                    partnerId = messageRequest.user.userId,
-                                    lastMessageId = newMessage.messageId
-                                )
-                            }
+
                             coroutineScope.launch {
+                                val newMessage = Message(it.message)
+
                                 try {
                                     db.messageDao().insert(newMessage)
+                                    val chat = auth.currentUser?.let {
+                                        Chat(
+                                            ownerId = it.uid,
+                                            partnerId = messageRequest.user.userId,
+                                            lastMessageId = newMessage.messageId,
+                                            activated = false
+                                        )
+                                    }
                                     try{
                                         db.userDao().insert(it.user)
                                     }

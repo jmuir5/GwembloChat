@@ -4,8 +4,11 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
+import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndAllMessages
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MessageDao {
@@ -26,4 +29,9 @@ interface MessageDao {
 
     @Query("SELECT * FROM Message")
     suspend fun getAll(): List<Message>
+
+    @Transaction
+    @Query("SELECT * FROM Message where remoteId = :id")
+    fun getAllMessagesByRemoteId(id: String): Flow<List<Message>>
+
 }

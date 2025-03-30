@@ -9,7 +9,9 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.room.Room
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -46,12 +48,21 @@ fun NavMain(){
                 coroutineScope = coroutineScope,
             )
         }
-        composable(Paths.Chat.Path) {
-            ChatPage(
-                auth = auth,
-                coroutineScope = coroutineScope,
-                db = db,
+        composable(
+            route = "${Paths.Chat.Path}/{chatId}",
+            arguments = listOf(navArgument("chatId") { type = NavType.IntType }
             )
+        ) {
+            val chatId = it.arguments?.getInt("chatId")
+            chatId?.let{
+                ChatPage(
+                    chatId=it,
+                    auth = auth,
+                    coroutineScope = coroutineScope,
+                    db = db,
+                )
+            }
+
         }
         composable(Paths.Login.Path) {
             LoginPage(
@@ -63,6 +74,7 @@ fun NavMain(){
         }
         composable(Paths.NewChat.Path) {
             NewChatPage(
+                navHostController,
                 db,
                 coroutineScope,
                 auth,

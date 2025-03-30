@@ -31,6 +31,9 @@ interface UserDao {
     @Query ("SELECT * FROM User WHERE userId = :id LIMIT 1")
     suspend fun getOneById (id: String) : User
 
+    @Query ("SELECT * FROM User WHERE email = :email LIMIT 1")
+    suspend fun getOneByEmail(email: String) : User
+
 
     /*@Transaction
     @Query("SELECT * FROM Gift")

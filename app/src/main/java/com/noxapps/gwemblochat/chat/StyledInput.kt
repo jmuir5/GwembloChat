@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -16,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.noxapps.gwemblochat.R
 
@@ -25,6 +29,9 @@ fun StyledInput(
     labelText:String? = null,
     leadingIcon:@Composable (() -> Unit)? = null,
     enabled: Boolean,
+    singleLine:Boolean = false,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyActSends: Boolean = false,
     onSend:() -> Unit){
     //var message = remember { mutableStateOf("") }
     var inputColors = TextFieldDefaults.colors(
@@ -52,7 +59,18 @@ fun StyledInput(
             },
             shape = RoundedCornerShape(20.dp),
             colors = inputColors,
-            enabled = enabled
+            enabled = enabled,
+            singleLine = singleLine,
+            keyboardOptions = keyboardOptions,
+            keyboardActions =
+                if(keyActSends){
+                    KeyboardActions{
+                        onSend()
+                        message.value = ""
+                    }
+                }
+                else{KeyboardActions.Default}
+
         )
         IconButton(
             onClick = {
@@ -83,6 +101,12 @@ fun SearchInput(message:MutableState<String>, enabled:Boolean = true, onSearch:(
         },
         labelText = "Search",
         enabled = enabled,
-        onSend = onSearch
+        onSend = onSearch,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Search
+        ),
+        keyActSends = true
     )
 }

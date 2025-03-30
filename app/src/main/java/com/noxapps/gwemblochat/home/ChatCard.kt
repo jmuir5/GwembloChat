@@ -28,6 +28,7 @@ import androidx.navigation.NavHostController
 import com.noxapps.gwemblochat.R
 import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndLastMessage
+import com.noxapps.gwemblochat.navigation.Paths
 
 @Composable
 fun ChatCard(chat: ChatWithUserAndLastMessage, navController: NavHostController){
@@ -41,7 +42,7 @@ fun ChatCard(chat: ChatWithUserAndLastMessage, navController: NavHostController)
             if(maxHeight==0)maxHeight = coordinates.size.height
         }
         .clickable{
-            navController.navigate("chat")
+            navController.navigate("${Paths.Chat.Path}/${chat.chat.id}")
         }
     ){
         Image(

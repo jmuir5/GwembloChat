@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
+import com.noxapps.gwemblochat.data.Relationships.ChatWithUser
 import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndAllMessages
 import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndLastMessage
 import kotlinx.coroutines.flow.Flow
@@ -32,12 +33,19 @@ interface ChatDao {
     fun getAll(): List<Chat>
 
     @Transaction
+    @Query("SELECT * FROM  Chat where id = :id LIMIT 1")
+    suspend fun getChatWithUserById(id: Int): ChatWithUser
+
+    @Transaction
     @Query("SELECT * FROM  Chat where ownerId = :ownerId")
     fun getAllChatsWithLastMessage(ownerId:String): Flow<List<ChatWithUserAndLastMessage>>
 
     @Transaction
-    @Query("SELECT * FROM  Chat where partnerId = :id LIMIT 1")
-    suspend fun getChatByIdWithAllMessages(id: String): ChatWithUserAndAllMessages
+    @Query("SELECT * FROM  Chat where id = :id LIMIT 1")
+    fun getChatByIdWithAllMessages(id: Int): ChatWithUserAndAllMessages
+
+    @Query("SELECT * FROM Chat where ownerId = :ownerId and partnerId = :partnerId LIMIT 1")
+    suspend fun getChatByIds(ownerId: String, partnerId: String): Chat
 
 
 
