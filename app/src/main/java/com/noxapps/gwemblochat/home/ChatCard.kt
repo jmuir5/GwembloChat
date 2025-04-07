@@ -4,13 +4,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.material3.Text
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,10 +21,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.noxapps.gwemblochat.R
-import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndLastMessage
 import com.noxapps.gwemblochat.navigation.Paths
 
@@ -66,7 +62,7 @@ fun ChatCard(chat: ChatWithUserAndLastMessage, navController: NavHostController)
                 )
             }
             Text(
-                text = chat.lastMessage.message,
+                text = chat.lastMessage.plainText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyLarge

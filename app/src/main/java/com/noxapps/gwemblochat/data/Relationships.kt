@@ -47,5 +47,9 @@ class Relationships {
             entityColumn = "remoteId",
         )
         val messages: List<Message>,
-    )
+    ){
+        val missedMessages = messages.filter { it.plainText == "" }
+    }
+
+
 }

@@ -23,7 +23,6 @@ import com.noxapps.gwemblochat.data.Relationships
 import com.noxapps.gwemblochat.data.User
 import com.noxapps.gwemblochat.ui.theme.GwembloChatTheme
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.launch
 
 @Composable
@@ -75,7 +74,7 @@ fun ChatPage(
                             recipientId = chatObject.user.userId,
                             sender = it.uid,
                             messageNum = messages.value?.size?: 0 ,
-                            message = message.value
+                            plainText = message.value
                         )
                     }
 

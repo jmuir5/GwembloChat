@@ -6,7 +6,6 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -121,7 +120,7 @@ fun NewChatPage(
                             recipientId = recipient.userId,
                             sender = currentUser.uid,
                             messageNum = 0,
-                            message = firstMessage.value
+                            plainText = firstMessage.value
                         )
                     }
                 }
@@ -132,7 +131,7 @@ fun NewChatPage(
                             recipientId = recipient.userId,
                             sender = currentUser.uid,
                             messageNum = 0,
-                            message = firstMessage.value
+                            plainText = firstMessage.value
                         )
                     }
                 }

@@ -3,8 +3,8 @@ package com.noxapps.gwemblochat.data
 import androidx.room.Entity
 
 @Entity(primaryKeys = ["userId", "messageId"])
-data class UserMessageCrossReference(
-    val userId:Int,
+data class MissedMessageCrossReference(
+    val chatId:Int,
     val messageId:Int,
 ) {
 }
