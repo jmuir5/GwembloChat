@@ -6,73 +6,203 @@ import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndAllMessages
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.bouncycastle.asn1.sec.SECNamedCurves
+import org.bouncycastle.crypto.CipherParameters
+import org.bouncycastle.crypto.agreement.X25519Agreement
+import org.bouncycastle.crypto.digests.SHA256Digest
+import org.bouncycastle.crypto.digests.SHA3Digest
+import org.bouncycastle.crypto.generators.HKDFBytesGenerator
+import org.bouncycastle.crypto.macs.HMac
+import org.bouncycastle.crypto.modes.GCMSIVBlockCipher
+import org.bouncycastle.crypto.params.AEADParameters
+import org.bouncycastle.crypto.params.HKDFParameters
+import org.bouncycastle.crypto.params.KeyParameter
+import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
+import org.bouncycastle.crypto.params.X25519PublicKeyParameters
+import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey
+import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
+import org.bouncycastle.jcajce.provider.symmetric.AES
+import org.bouncycastle.jce.ECNamedCurveTable
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.math.BigInteger
+import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
+import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.SecureRandom
+import org.bouncycastle.jce.spec.ECPrivateKeySpec
+import org.bouncycastle.jce.spec.ECPublicKeySpec
+import java.security.*
+import java.security.spec.ECGenParameterSpec
+import javax.crypto.KeyAgreement
+import javax.crypto.spec.SecretKeySpec
 
 
 //finally found it: now to reverse engineer
 // https://gist.github.com/hurui200320/f86833eaaf0d33574562024f290ae861
 
-//Returns a new Diffie-Hellman key pair.
-fun generateDHPair():KeyPair{
-    val kpg = KeyPairGenerator.getInstance("DiffieHellman")
-    kpg.initialize(2048)
+object ECDH{
+    private const val curveName = "curve25519"
+    private val secureRandom = SecureRandom()
+    private var ecSpec = ECNamedCurveTable.getParameterSpec(curveName)
+    private val bcProvider = BouncyCastleProvider()
 
-    return kpg.generateKeyPair()
+    private fun generatePrivateKey(): ByteArray =
+        X25519PrivateKeyParameters(secureRandom).encoded
+
+    private fun generatePublicKey(privateKeyBytes: ByteArray): ByteArray =
+        X25519PrivateKeyParameters(privateKeyBytes).generatePublicKey().encoded
+
+    private fun doECDH(selfPrivateKeyBytes: ByteArray, remotePublicKeyBytes: ByteArray): ByteArray {
+        val agreement = X25519Agreement()
+        val result = ByteArray(agreement.agreementSize)
+        agreement.init(X25519PrivateKeyParameters(selfPrivateKeyBytes))
+        agreement.calculateAgreement(X25519PublicKeyParameters(remotePublicKeyBytes), result, 0)
+        return result
+    }
+
+
+    /*private fun dumpKeyPair(keyPair: KeyPair): Pair<BigInteger, ByteArray> {
+        val privateKey = keyPair.private
+        println("Private key type: " + privateKey.javaClass.canonicalName)
+        require(privateKey is BCECPrivateKey)
+
+        val publicKey = keyPair.public
+        println("Public key type:  " + publicKey.javaClass.canonicalName)
+        require(publicKey is BCECPublicKey)
+
+        // compressed make the pub key shorter, no effect on this demo
+        return privateKey.d to publicKey.q.getEncoded(true)
+    }
+
+    private fun parsePrivateKey(d: BigInteger): PrivateKey {
+        println("Private key (Hex number): " + d.toString(16))
+        val privateKeySpec = ECPrivateKeySpec(d, ecSpec)
+        val keyFactory = KeyFactory.getInstance("ECDH", bcProvider)
+        return keyFactory.generatePrivate(privateKeySpec)
+    }
+
+    private fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
+
+    private fun parsePublicKey(publicKeyBytes: ByteArray): PublicKey {
+        println("Public key (Hex string):  " + publicKeyBytes.toHex())
+        val pubKey = ECPublicKeySpec(ecSpec.curve.decodePoint(publicKeyBytes), ecSpec)
+        val keyFactory = KeyFactory.getInstance("ECDH", bcProvider)
+        return keyFactory.generatePublic(pubKey)
+    }
+
+    private fun dumpAndLoadKeyPair(keyPair: KeyPair): Pair<PrivateKey, PublicKey> {
+        val (privateKeyD, publicKeyBytes) = dumpKeyPair(keyPair)
+        return parsePrivateKey(privateKeyD) to parsePublicKey(publicKeyBytes)
+    }*/
+
+
+
+    //Returns a new Diffie-Hellman key pair.
+    fun generateDHPair():KeyPair{
+        val keyPairGenerator = KeyPairGenerator.getInstance("ECDH", bcProvider)
+        keyPairGenerator.initialize(ECGenParameterSpec(curveName), secureRandom)
+        return keyPairGenerator.generateKeyPair()
+    }
+
+    //Returns the output from the Diffie-Hellman calculation between the private key from the DH key
+    // pair dh_pair and the DH public key dh_pub.
+    fun diffieHellman(selfPrivateKey: PrivateKey, remotePublicKey: PublicKey): ByteArray {
+        val keyAgreement = KeyAgreement.getInstance("ECDH", bcProvider)
+        keyAgreement.init(selfPrivateKey)
+        keyAgreement.doPhase(remotePublicKey, true)
+        return keyAgreement.generateSecret()
+    }
+
+    // Returns a pair (32-byte root key, 32-byte chain key) as the output of applying a KDF keyed by
+    // a 32-byte root key rk to a Diffie-Hellman output dh_out.
+    fun kdfRK(
+        rootKey:ByteArray,
+        dhOutput:ByteArray
+    ) :Pair<ByteArray, ByteArray> {
+        HKDFBytesGenerator(SHA256Digest()).apply {}
+        val hkdf = HKDFBytesGenerator(SHA256Digest())
+        val params = HKDFParameters(dhOutput, rootKey, "Gwemblochat".toByteArray())
+        var result = ByteArray(32)
+        hkdf.init(params)
+        hkdf.generateBytes(result, 0, 32)
+
+        return rootKey to result
+    }
+
+    //Returns a pair (32-byte chain key, 32-byte message key) as the output of applying a KDF keyed by a 32-byte chain key ck to some constant.
+    fun kdfCK(chainKey: ByteArray):Pair<ByteArray, ByteArray> {
+        val hmac = HMac(SHA256Digest())
+        hmac.init(KeyParameter("Gwemblochat".toByteArray()))
+        var result = ByteArray(32)
+        hmac.update(chainKey, 0, 32)
+        hmac.doFinal(result, 0)
+        return chainKey to result
+    }
+
+    //Returns an AEAD encryption of plaintext with message key mk [5]. The associated_data is
+    // authenticated but is not included in the ciphertext. Because each message key is only used once,
+    // the AEAD nonce may handled in several ways: fixed to a constant; derived from mk alongside an
+    // independent AEAD encryption key; derived as an additional output from KDF_CK(); or chosen
+    // randomly and transmitted.
+
+    //associated data is a byte array (sender identity key||receiver identity key)
+    fun encrypt(
+        messageKey:ByteArray,
+        plaintext: ByteArray,
+        associatedData:ByteArray
+    ):ByteArray{
+        val siv = GCMSIVBlockCipher()
+        val digest = SHA3Digest(512)
+        val nonce = ByteArray(digest.digestSize)
+        val result = ByteArray(plaintext.size)
+        digest.update(plaintext, 0, plaintext.size)
+        digest.doFinal(nonce, 0)
+
+        siv.init(true, AEADParameters(KeyParameter(messageKey), 128, nonce, associatedData))
+        siv.processBytes(plaintext, 0, plaintext.size, result, 0)
+        siv.doFinal(result, plaintext.size)
+        return result
+    }
+
+    //Returns the AEAD decryption of ciphertext with message key mk. If authentication fails, an
+    // exception will be raised that terminates processing.
+    fun decrypt(messageKey:ByteArray, ciphertext:ByteArray, associatedData:ByteArray):ByteArray{
+        val siv = GCMSIVBlockCipher()
+        val digest = SHA3Digest(512)
+        val nonce = ByteArray(digest.digestSize)
+        val result = ByteArray(ciphertext.size)
+        digest.update(ciphertext, 0, ciphertext.size)
+        digest.doFinal(nonce, 0)
+
+        siv.init(false, AEADParameters(KeyParameter(messageKey), 128, nonce, associatedData))
+        siv.processBytes(ciphertext, 0, ciphertext.size, result, 0)
+        siv.doFinal(result, ciphertext.size)
+        return result
+    }
+
+    //Creates a new message header containing the DH ratchet public key from the key pair in dh_pair,
+    // the previous chain length pn, and the message number n. The returned header object contains
+    // ratchet public key dh and integers pn and n.
+    //literally just the constructor, totally redundant
+    fun header(publicKey:ByteArray, chainLength:Int, messageNum:Int):Header{
+        return Header(publicKey, chainLength, messageNum)
+    }
+
+    //Encodes a message header into a parseable byte sequence, prepends the ad byte sequence,
+    // and returns the result. If ad is not guaranteed to be a parseable byte sequence, a length
+    // value should be prepended to the output to ensure that the output is parseable as a unique
+    // pair (ad, header).
+    fun concat(associatedData: ByteArray, header:Header):String{
+        return ""
+    }
 
 }
 
-//Returns the output from the Diffie-Hellman calculation between the private key from the DH key
-// pair dh_pair and the DH public key dh_pub. If the DH function rejects invalid public keys,
-// then this function may raise an exception which terminates processing.
-fun diffieHellman(
-    dhPair:KeyPair,
-    dhPub: PublicKey
-):String{
-    return ""
-}
 
-// Returns a pair (32-byte root key, 32-byte chain key) as the output of applying a KDF keyed by
-// a 32-byte root key rk to a Diffie-Hellman output dh_out.
-fun kdfRK(rootKey:String, dhOutput:String
-) :String {
-    return ""
-}
 
-//Returns a pair (32-byte chain key, 32-byte message key) as the output of applying a KDF keyed by a 32-byte chain key ck to some constant.
-fun kdfCK(chainKey:String):String {
-    return ""
-}
 
-//Returns an AEAD encryption of plaintext with message key mk [5]. The associated_data is
-// authenticated but is not included in the ciphertext. Because each message key is only used once,
-// the AEAD nonce may handled in several ways: fixed to a constant; derived from mk alongside an
-// independent AEAD encryption key; derived as an additional output from KDF_CK(); or chosen
-// randomly and transmitted.
-fun encrypt(messageKey:String, plaintext:String, associatedData:String):String{
-    return ""
-}
 
-//Returns the AEAD decryption of ciphertext with message key mk. If authentication fails, an
-// exception will be raised that terminates processing.
-fun decrypt(messageKey:String, ciphertext:String, associatedData:String):String{
-    return ""
-}
-
-//Creates a new message header containing the DH ratchet public key from the key pair in dh_pair,
-// the previous chain length pn, and the message number n. The returned header object contains
-// ratchet public key dh and integers pn and n.
-fun header(dhPair:KeyPair, chainLength:Int, messageNum:Int):Header{
-    return Header(dhPair.public/*public key*/, chainLength, messageNum)
-}
-//Encodes a message header into a parseable byte sequence, prepends the ad byte sequence,
-// and returns the result. If ad is not guaranteed to be a parseable byte sequence, a length
-// value should be prepended to the output to ensure that the output is parseable as a unique
-// pair (ad, header).
-fun concat(associatedData:String, header:Header):String{
-    return ""
-}
 
 //A MAX_SKIP constant also needs to be defined. This specifies the maximum number of message keys
 // that can be skipped in a single chain. It should be set high enough to tolerate routine lost or
