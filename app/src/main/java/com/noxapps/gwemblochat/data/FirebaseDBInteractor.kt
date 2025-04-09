@@ -9,6 +9,7 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
+import com.noxapps.gwemblochat.crypto.ECDH
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.coroutineScope
@@ -168,11 +169,13 @@ class FirebaseDBInteractor {
                                 try {
                                     db.messageDao().insert(newMessage)
                                     val chat = auth.currentUser?.let {
-                                        Chat(
+                                        val currentUser = db.userDao().getOneById(it.uid)
+                                        Chat.initNewChat(
                                             ownerId = it.uid,
                                             partnerId = messageRequest.user.userId,
-                                            lastMessageId = newMessage.messageId,
-                                            activated = false
+                                            partnerDHPublicKey = messageRequest.user.identityPublicKey,
+                                            secretKey = ECDH.doECDH(currentUser.identityPrivateKey, messageRequest.user.identityPublicKey)
+
                                         )
                                     }
                                     try{
@@ -211,54 +214,6 @@ class FirebaseDBInteractor {
                 .child(MESSAGESREQS)
                 .child(auth.currentUser!!.uid)
                 .addValueEventListener(messageListener)
-        }
-
-        fun getMessage( //todo: rewrite with listener
-            userId:String,
-            giftId:String,
-            onFail:((exception:Exception)->Unit)? = null,
-            onComplete: ((task: Task<DataSnapshot>)->Unit)? = null,
-            onSuccess:(result: DataSnapshot, gift:Message)->Unit,
-            ){
-            firebaseDB
-                .child(MESSAGES)
-                .child(userId)
-                .child(giftId)
-                .get()
-                .addOnFailureListener(){
-                    onFail?.invoke(it)
-                }
-                .addOnSuccessListener() {pg ->
-                    val pulledMessage = pg.getValue(Message::class.java)
-                    onSuccess(pg, pulledMessage!!)
-                }
-                .addOnCompleteListener(){
-                    onComplete?.invoke(it)
-                }
-
-        }
-
-        fun getAllMessages( //todo: rewrite with listener
-            userId:String,
-            onFail:((exception:Exception)->Unit)? = null,
-            onComplete: ((task: Task<DataSnapshot>)->Unit)? = null,
-            onSuccess:(result: DataSnapshot, gifts:List<Message>)->Unit,
-        ){
-            firebaseDB
-                .child(userId)
-                .child("Gifts")
-                .get()
-                .addOnFailureListener(){
-                    onFail?.invoke(it)
-                }
-                .addOnSuccessListener() {pulledMessages ->
-                    val message = pulledMessages.children.mapNotNull { it.getValue(Message::class.java) }
-                    onSuccess(pulledMessages, message)
-                }
-                .addOnCompleteListener(){
-                    onComplete?.invoke(it)
-                }
-
         }
     }
 }

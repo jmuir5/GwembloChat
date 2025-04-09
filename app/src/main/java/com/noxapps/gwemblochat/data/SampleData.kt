@@ -6,7 +6,6 @@ class SampleData {
             userId = "0",
             email = "exampleEmail@gmail.com",
             userName = "testAccount",
-            profilePic = ""
         )
     }
 

@@ -5,8 +5,6 @@ import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndAllMessages
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import org.bouncycastle.asn1.sec.SECNamedCurves
-import org.bouncycastle.crypto.CipherParameters
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.digests.SHA3Digest
@@ -18,24 +16,14 @@ import org.bouncycastle.crypto.params.HKDFParameters
 import org.bouncycastle.crypto.params.KeyParameter
 import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 import org.bouncycastle.crypto.params.X25519PublicKeyParameters
-import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey
-import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
-import org.bouncycastle.jcajce.provider.symmetric.AES
-import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.math.BigInteger
-import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.SecureRandom
-import org.bouncycastle.jce.spec.ECPrivateKeySpec
-import org.bouncycastle.jce.spec.ECPublicKeySpec
-import java.security.*
 import java.security.spec.ECGenParameterSpec
 import javax.crypto.KeyAgreement
-import javax.crypto.spec.SecretKeySpec
 
 
 //finally found it: now to reverse engineer
@@ -44,21 +32,33 @@ import javax.crypto.spec.SecretKeySpec
 object ECDH{
     private const val curveName = "curve25519"
     private val secureRandom = SecureRandom()
-    private var ecSpec = ECNamedCurveTable.getParameterSpec(curveName)
+    //private var ecSpec = ECNamedCurveTable.getParameterSpec(curveName)
     private val bcProvider = BouncyCastleProvider()
+    //A MAX_SKIP constant also needs to be defined. This specifies the maximum number of message keys
+    // that can be skipped in a single chain. It should be set high enough to tolerate routine lost or
+    // delayed messages, but low enough that a malicious sender can't trigger excessive
+    // recipient computation.
+    const val MAX_SKIP = 10
 
-    private fun generatePrivateKey(): ByteArray =
+
+    fun generatePrivateKey(): ByteArray =
         X25519PrivateKeyParameters(secureRandom).encoded
 
-    private fun generatePublicKey(privateKeyBytes: ByteArray): ByteArray =
+    fun generatePublicKey(privateKeyBytes: ByteArray): ByteArray =
         X25519PrivateKeyParameters(privateKeyBytes).generatePublicKey().encoded
 
-    private fun doECDH(selfPrivateKeyBytes: ByteArray, remotePublicKeyBytes: ByteArray): ByteArray {
+    fun doECDH(selfPrivateKeyBytes: ByteArray, remotePublicKeyBytes: ByteArray): ByteArray {
         val agreement = X25519Agreement()
         val result = ByteArray(agreement.agreementSize)
         agreement.init(X25519PrivateKeyParameters(selfPrivateKeyBytes))
         agreement.calculateAgreement(X25519PublicKeyParameters(remotePublicKeyBytes), result, 0)
         return result
+    }
+
+    //Returns a new Diffie-Hellman key pair.
+    fun generateKeyPair(): Pair<ByteArray, ByteArray> {
+        val privateKeyBytes = generatePrivateKey()
+        return privateKeyBytes to generatePublicKey(privateKeyBytes)
     }
 
 
@@ -98,16 +98,15 @@ object ECDH{
 
 
 
-    //Returns a new Diffie-Hellman key pair.
-    fun generateDHPair():KeyPair{
+    /*fun generateDHPair():KeyPair{
         val keyPairGenerator = KeyPairGenerator.getInstance("ECDH", bcProvider)
         keyPairGenerator.initialize(ECGenParameterSpec(curveName), secureRandom)
         return keyPairGenerator.generateKeyPair()
-    }
+    }*/
 
     //Returns the output from the Diffie-Hellman calculation between the private key from the DH key
     // pair dh_pair and the DH public key dh_pub.
-    fun diffieHellman(selfPrivateKey: PrivateKey, remotePublicKey: PublicKey): ByteArray {
+    fun diffieHellmanxx(selfPrivateKey: PrivateKey, remotePublicKey: PublicKey): ByteArray {
         val keyAgreement = KeyAgreement.getInstance("ECDH", bcProvider)
         keyAgreement.init(selfPrivateKey)
         keyAgreement.doPhase(remotePublicKey, true)
@@ -193,121 +192,118 @@ object ECDH{
     // and returns the result. If ad is not guaranteed to be a parseable byte sequence, a length
     // value should be prepended to the output to ensure that the output is parseable as a unique
     // pair (ad, header).
-    fun concat(associatedData: ByteArray, header:Header):String{
-        return ""
+    fun concat(associatedData: ByteArray, header:Header):ByteArray{
+        return associatedData + header.dhPublicKey + header.chainLength.toByte() + header.messageNumber.toByte()
     }
 
-}
-
-
-
-
-
-
-//A MAX_SKIP constant also needs to be defined. This specifies the maximum number of message keys
-// that can be skipped in a single chain. It should be set high enough to tolerate routine lost or
-// delayed messages, but low enough that a malicious sender can't trigger excessive
-// recipient computation.
-const val MAX_SKIP = 10
-
-fun ratchetEncrypt(
-    chat:Chat,
-    plaintext:String,
-    associatedData:String,
-    db: AppDatabase,
-    coroutineScope: CoroutineScope
-):Pair<Header, String>{
-    val messageKey = kdfCK(chat.sentChainKey)
-    chat.sentChainKey = messageKey
-    val header = header(chat.selfDiffieHellmanKey, chat.previousChainLength, chat.messagesSent)
-    chat.messagesSent += 1
-    coroutineScope.launch {
-        db.chatDao().update(chat)
-    }
-    return Pair(header, encrypt(messageKey, plaintext, concat(associatedData, header)))
-}
-
-fun ratchetDecrypt(
-    chat: ChatWithUserAndAllMessages,
-    header: Header,
-    cypherText:String,
-    associatedData:String,
-    db: AppDatabase,
-    coroutineScope: CoroutineScope
-):String{
-    val plaintext = trySkippedMessages(chat, header, cypherText, associatedData, db)
-    if(plaintext != null){
-        return plaintext
-    }
-    else{
-        if(header.dhPublicKey != chat.chat.partnerDiffieHellmanKey) {
-            skipMessageKeys(chat, header.chainLength, db, coroutineScope)
-            dhRatchet(chat, header, db, coroutineScope)
-        }
-        skipMessageKeys(chat, header.messageNumber, db, coroutineScope)
-        val messageKey = kdfCK(chat.chat.sentChainKey)
-        chat.chat.sentChainKey = messageKey
-        chat.chat.messagesReceived+=1
+    fun ratchetEncrypt(
+        chat:Chat,
+        plaintext:String,
+        associatedData:ByteArray,
+        db: AppDatabase,
+        coroutineScope: CoroutineScope
+    ):Pair<Header, ByteArray>{
+        val (chainKey, messageKey)  = kdfCK(chat.sentChainKey)
+        chat.sentChainKey = chainKey
+        val header = header(chat.selfDiffieHellmanPublic, chat.previousChainLength, chat.messagesSent)
+        chat.messagesSent += 1
         coroutineScope.launch {
-            db.chatDao().update(chat.chat)
+            db.chatDao().update(chat)
         }
-        return decrypt(messageKey, cypherText, concat(associatedData, header))
+        return Pair(header, encrypt(messageKey, plaintext.toByteArray(), concat(associatedData, header)))
     }
-}
 
-fun trySkippedMessages(
-    chat: ChatWithUserAndAllMessages,
-    header:Header,
-    cypherText: String,
-    associatedData: String,
-    db: AppDatabase
-):String?{
-    for(message in chat.missedMessages){
-        if(message.messageNum == header.messageNumber && message.dhPublicKey == header.dhPublicKey){
-            //db.referenceDao().delete(message)
-            return decrypt(message.plainText, cypherText, concat(associatedData, header))
+    fun ratchetDecrypt(
+        chat: ChatWithUserAndAllMessages,
+        header: Header,
+        cypherText:String,
+        associatedData:String,
+        db: AppDatabase,
+        coroutineScope: CoroutineScope
+    ):String{
+        val plaintext = trySkippedMessages(chat, header, cypherText, associatedData, db)
+        if(plaintext != null){
+            return plaintext
         }
-    }
-    return null
-}
-
-fun skipMessageKeys(chat: ChatWithUserAndAllMessages, until:Int, db: AppDatabase, coroutineScope: CoroutineScope) {
-    if (chat.chat.messagesReceived + MAX_SKIP < until) {
-        throw Error()
-    }
-    if (chat.chat.receivedChainKey != "") {
-        while (chat.chat.messagesReceived < until) {
+        else{
+            if(header.dhPublicKey != chat.chat.partnerDiffieHellmanKey) {
+                skipMessageKeys(chat, header.chainLength, db, coroutineScope)
+                dhRatchet(chat, header, db, coroutineScope)
+            }
+            skipMessageKeys(chat, header.messageNumber, db, coroutineScope)
             val messageKey = kdfCK(chat.chat.sentChainKey)
             chat.chat.sentChainKey = messageKey
-            chat.chat.messagesReceived += 1
+            chat.chat.messagesReceived+=1
             coroutineScope.launch {
                 db.chatDao().update(chat.chat)
             }
+            return decrypt(messageKey, cypherText, concat(associatedData, header))
         }
     }
+
+    fun trySkippedMessages(
+        chat: ChatWithUserAndAllMessages,
+        header:Header,
+        cypherText: String,
+        associatedData: String,
+        db: AppDatabase
+    ):String?{
+        for(message in chat.missedMessages){
+            if(message.messageNum == header.messageNumber && message.dhPublicKey == header.dhPublicKey){
+                //db.referenceDao().delete(message)
+                return decrypt(message.plainText, cypherText, concat(associatedData, header))
+            }
+        }
+        return null
+    }
+
+    fun skipMessageKeys(chat: ChatWithUserAndAllMessages, until:Int, db: AppDatabase, coroutineScope: CoroutineScope) {
+        if (chat.chat.messagesReceived + MAX_SKIP < until) {
+            throw Error()
+        }
+        if (chat.chat.receivedChainKey != "") {
+            while (chat.chat.messagesReceived < until) {
+                val messageKey = kdfCK(chat.chat.sentChainKey)
+                chat.chat.sentChainKey = messageKey
+                chat.chat.messagesReceived += 1
+                coroutineScope.launch {
+                    db.chatDao().update(chat.chat)
+                }
+            }
+        }
+    }
+
+    fun dhRatchet(chat: ChatWithUserAndAllMessages, header: Header, db: AppDatabase, coroutineScope: CoroutineScope) {
+        chat.chat.previousChainLength = chat.chat.messagesReceived
+        chat.chat.messagesReceived = 0
+        chat.chat.messagesSent = 0
+        chat.chat.partnerDiffieHellmanKey = header.dhPublicKey
+        val newKeyA = kdfRK(
+            chat.chat.rootKey,
+            diffieHellman(chat.chat.selfDiffieHellman, chat.chat.partnerDiffieHellmanKey)
+        )
+        chat.chat.receivedChainKey = newKeyA
+        chat.chat.rootKey = newKeyA
+        chat.chat.selfDiffieHellman = generateDHPair()
+        val newKeyB = kdfRK(
+            chat.chat.rootKey,
+            diffieHellman(chat.chat.selfDiffieHellman, chat.chat.partnerDiffieHellmanKey)
+        )
+        chat.chat.sentChainKey = newKeyB
+        chat.chat.rootKey = newKeyB
+        coroutineScope.launch {
+            db.chatDao().update(chat.chat)
+        }
+    }
+
 }
 
-fun dhRatchet(chat: ChatWithUserAndAllMessages, header: Header, db: AppDatabase, coroutineScope: CoroutineScope) {
-    chat.chat.previousChainLength = chat.chat.messagesReceived
-    chat.chat.messagesReceived = 0
-    chat.chat.messagesSent = 0
-    chat.chat.partnerDiffieHellmanKey = header.dhPublicKey
-    val newKeyA = kdfRK(
-        chat.chat.rootKey,
-        diffieHellman(chat.chat.selfDiffieHellmanKey, chat.chat.partnerDiffieHellmanKey)
-    )
-    chat.chat.receivedChainKey = newKeyA
-    chat.chat.rootKey = newKeyA
-    chat.chat.selfDiffieHellmanKey = generateDHPair()
-    val newKeyB = kdfRK(
-        chat.chat.rootKey,
-        diffieHellman(chat.chat.selfDiffieHellmanKey, chat.chat.partnerDiffieHellmanKey)
-    )
-    chat.chat.sentChainKey = newKeyB
-    chat.chat.rootKey = newKeyB
-    coroutineScope.launch {
-        db.chatDao().update(chat.chat)
-    }
-}
+
+
+
+
+
+
+
 
 

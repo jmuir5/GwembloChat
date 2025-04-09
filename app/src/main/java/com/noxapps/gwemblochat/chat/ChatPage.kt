@@ -45,7 +45,7 @@ fun ChatPage(
 
     Scaffold(
         topBar = {
-            ChatHeader(chatObject.user.userName, chatObject.user.profilePic)
+            ChatHeader(chatObject.user.userName)
         }
     ) { innerPadding ->
         Column(modifier = Modifier

@@ -21,8 +21,6 @@ class ChatViewModel(
     val db: AppDatabase,
 ): ViewModel() {
     fun getAll() = db.chatDao().getAllChatsWithLastMessage(auth.currentUser!!.uid)
-    fun populate() = db.chatDao().getChatByIdWithAllMessages(chatId)
-    fun getChatInfo() = db.chatDao().getChatByIdWithAllMessages(chatId)
     var chat = Relationships.ChatWithUser(Chat(), User())
     fun getMessages(id:String) = db.messageDao().getAllMessagesByRemoteId(id)
 
@@ -35,17 +33,4 @@ class ChatViewModel(
 
         }
     }
-    val random = Random(1)
-    val messages = (1..10).map{
-        Message(
-            messageId = UUID.randomUUID().toString(),
-            remoteId = "0",
-            recipientId = "0",
-            sender = "${it%2}",
-            messageNum = it,
-            "test message $it, ${(0..random.nextInt(100)).map{"a"}}"
-        )
-    }
-    val chatTarget = "Example Chat"
-    val chatTargetProfilePic = ""
 }

@@ -62,7 +62,7 @@ fun MessageCard(message: Message, myId:String){
     }
 }
 
-
+/*
 @Preview
 @Composable
 fun SentMessageCardPreview(){
@@ -98,3 +98,4 @@ fun ReceivedMessageCardPreview(){
     }
 }
 
+*/

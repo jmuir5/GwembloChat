@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
+import com.noxapps.gwemblochat.crypto.ECDH
 import com.noxapps.gwemblochat.data.AppDatabase
 import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.FirebaseDBInteractor
@@ -138,10 +139,12 @@ fun NewChatPage(
                 val newChat = recipient.value?.let { recipient ->
                     message?.let { msg ->
                         auth.currentUser?.let {
-                            Chat(
+                            Chat.initNewChat(
                                 ownerId = it.uid,
                                 partnerId = recipient.userId,
-                                lastMessageId = msg.messageId)
+                                partnerDHPublicKey = recipient.identityPublicKey,
+                                secretKey = ECDH.doECDH(user.identityPrivateKey, recipient.identityPublicKey)
+                            )
                         }
                     }
                 }

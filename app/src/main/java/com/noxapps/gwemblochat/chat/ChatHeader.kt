@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatHeader(userName: String, profilePictureUrl: String){
+fun ChatHeader(userName: String){
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
     val headerBarColors = TopAppBarColors(
         containerColor = MaterialTheme.colorScheme.primaryContainer,

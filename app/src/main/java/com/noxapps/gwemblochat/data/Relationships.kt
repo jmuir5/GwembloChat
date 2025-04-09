@@ -1,6 +1,7 @@
 package com.noxapps.gwemblochat.data
 
 import androidx.room.Embedded
+import androidx.room.Ignore
 import androidx.room.Relation
 import kotlinx.coroutines.flow.Flow
 
@@ -48,7 +49,7 @@ class Relationships {
         )
         val messages: List<Message>,
     ){
-        val missedMessages = messages.filter { it.plainText == "" }
+        @Ignore val missedMessages = messages.filter { it.plainText == "" }
     }
 
 
