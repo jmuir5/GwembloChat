@@ -3,6 +3,10 @@ package com.noxapps.gwemblochat.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.google.firebase.database.Exclude
+import com.noxapps.gwemblochat.crypto.ECDH
+import com.noxapps.gwemblochat.crypto.Header
+import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndAllMessages
+import kotlinx.coroutines.CoroutineScope
 import java.security.PublicKey
 import java.time.LocalDate
 import java.util.UUID
@@ -16,11 +20,45 @@ data class Message(
     val recipientId: String = "",
     val sender: String = "", //remove?
     val cypherText: ByteArray = byteArrayOf(),
-    var plainText: String = "",
+    @Exclude var plainText: String = "",
+    @Exclude val messageKey: ByteArray = byteArrayOf(),
     var dhPublicKey: ByteArray = byteArrayOf(),
     val chainLength: Int = 0,
     val messageNum: Int = 0,
 ) {
+    companion object{
+        fun pullMessage(
+            message: Message,
+            chat: ChatWithUserAndAllMessages,
+            db: AppDatabase,
+            associatedData:ByteArray,
+            coroutineScope: CoroutineScope
+        ): Message{
+            val decryptedMessage = ECDH.ratchetDecrypt(
+                chat,
+                Header(message.dhPublicKey, message.chainLength, message.messageNum),
+                message.cypherText,
+                associatedData,
+                db,
+                coroutineScope
+            )
+            val messageKey = ECDH.kdfCK(chat.chat.sentChainKey).second
+            return Message(
+                remoteId = message.remoteId,
+                recipientId = message.recipientId,
+                sender = message.sender,
+                cypherText = message.cypherText,
+                plainText = decryptedMessage,
+                messageKey = messageKey,
+                dhPublicKey = message.dhPublicKey,
+                chainLength = message.chainLength,
+                messageNum = message.messageNum,
+            )
+        }
+    }
+    // receive message - incorperate ratchet AND decryption
+    //firebase db interactor 117, 167
+
     //new id constructor for messages on same device
     constructor(oldMessage: Message) : this(
         remoteId = oldMessage.remoteId,
@@ -28,6 +66,7 @@ data class Message(
         sender = oldMessage.sender,
         cypherText = oldMessage.cypherText,
         plainText = oldMessage.plainText,
+        messageKey = oldMessage.messageKey,
         dhPublicKey = oldMessage.dhPublicKey,
         chainLength = oldMessage.chainLength,
         messageNum = oldMessage.messageNum,
@@ -65,3 +104,4 @@ data class Message(
         return result
     }
 }
+

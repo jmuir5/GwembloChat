@@ -17,12 +17,9 @@ import org.bouncycastle.crypto.params.KeyParameter
 import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 import org.bouncycastle.crypto.params.X25519PublicKeyParameters
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.security.KeyPair
-import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.SecureRandom
-import java.security.spec.ECGenParameterSpec
 import javax.crypto.KeyAgreement
 
 
@@ -214,44 +211,44 @@ object ECDH{
     }
 
     fun ratchetDecrypt(
-        chat: ChatWithUserAndAllMessages,
+        chatWUAAM: ChatWithUserAndAllMessages,
         header: Header,
-        cypherText:String,
-        associatedData:String,
+        cypherText:ByteArray,
+        associatedData:ByteArray,
         db: AppDatabase,
         coroutineScope: CoroutineScope
     ):String{
-        val plaintext = trySkippedMessages(chat, header, cypherText, associatedData, db)
+        val plaintext = trySkippedMessages(chatWUAAM, header, cypherText, associatedData, db)
         if(plaintext != null){
             return plaintext
         }
         else{
-            if(header.dhPublicKey != chat.chat.partnerDiffieHellmanKey) {
-                skipMessageKeys(chat, header.chainLength, db, coroutineScope)
-                dhRatchet(chat, header, db, coroutineScope)
+            if(header.dhPublicKey != chatWUAAM.chat.partnerDiffieHellmanPublic) {
+                skipMessageKeys(chatWUAAM, header.chainLength, db, coroutineScope)
+                dhRatchet(chatWUAAM, header, db, coroutineScope)
             }
-            skipMessageKeys(chat, header.messageNumber, db, coroutineScope)
-            val messageKey = kdfCK(chat.chat.sentChainKey)
-            chat.chat.sentChainKey = messageKey
-            chat.chat.messagesReceived+=1
+            skipMessageKeys(chatWUAAM, header.messageNumber, db, coroutineScope)
+            val messageKey = kdfCK(chatWUAAM.chat.sentChainKey).second
+            chatWUAAM.chat.sentChainKey = messageKey
+            chatWUAAM.chat.messagesReceived+=1
             coroutineScope.launch {
-                db.chatDao().update(chat.chat)
+                db.chatDao().update(chatWUAAM.chat)
             }
-            return decrypt(messageKey, cypherText, concat(associatedData, header))
+            return decrypt(messageKey, cypherText, concat(associatedData, header)).toString()
         }
     }
 
     fun trySkippedMessages(
         chat: ChatWithUserAndAllMessages,
         header:Header,
-        cypherText: String,
-        associatedData: String,
+        cypherText: ByteArray,
+        associatedData: ByteArray,
         db: AppDatabase
     ):String?{
         for(message in chat.missedMessages){
             if(message.messageNum == header.messageNumber && message.dhPublicKey == header.dhPublicKey){
                 //db.referenceDao().delete(message)
-                return decrypt(message.plainText, cypherText, concat(associatedData, header))
+                return decrypt(message.messageKey, cypherText, concat(associatedData, header)).toString()
             }
         }
         return null
@@ -261,9 +258,9 @@ object ECDH{
         if (chat.chat.messagesReceived + MAX_SKIP < until) {
             throw Error()
         }
-        if (chat.chat.receivedChainKey != "") {
+        if (chat.chat.receivedChainKey != byteArrayOf()) {
             while (chat.chat.messagesReceived < until) {
-                val messageKey = kdfCK(chat.chat.sentChainKey)
+                val messageKey = kdfCK(chat.chat.sentChainKey).second
                 chat.chat.sentChainKey = messageKey
                 chat.chat.messagesReceived += 1
                 coroutineScope.launch {
@@ -273,24 +270,31 @@ object ECDH{
         }
     }
 
-    fun dhRatchet(chat: ChatWithUserAndAllMessages, header: Header, db: AppDatabase, coroutineScope: CoroutineScope) {
+    fun dhRatchet(
+        chat: ChatWithUserAndAllMessages,
+        header: Header,
+        db: AppDatabase,
+        coroutineScope: CoroutineScope
+    ) {
         chat.chat.previousChainLength = chat.chat.messagesReceived
         chat.chat.messagesReceived = 0
         chat.chat.messagesSent = 0
-        chat.chat.partnerDiffieHellmanKey = header.dhPublicKey
-        val newKeyA = kdfRK(
+        chat.chat.partnerDiffieHellmanPublic = header.dhPublicKey
+        var newRootChainKey = kdfRK(
             chat.chat.rootKey,
-            diffieHellman(chat.chat.selfDiffieHellman, chat.chat.partnerDiffieHellmanKey)
+            doECDH(chat.chat.selfDiffieHellmanPrivate, chat.chat.partnerDiffieHellmanPublic)
         )
-        chat.chat.receivedChainKey = newKeyA
-        chat.chat.rootKey = newKeyA
-        chat.chat.selfDiffieHellman = generateDHPair()
-        val newKeyB = kdfRK(
+        chat.chat.rootKey = newRootChainKey.first
+        chat.chat.receivedChainKey = newRootChainKey.second
+        val neeSelfDHKey = generateKeyPair()
+        chat.chat.selfDiffieHellmanPrivate = neeSelfDHKey.first
+        chat.chat.selfDiffieHellmanPublic = neeSelfDHKey.second
+        newRootChainKey = kdfRK(
             chat.chat.rootKey,
-            diffieHellman(chat.chat.selfDiffieHellman, chat.chat.partnerDiffieHellmanKey)
+            doECDH(chat.chat.selfDiffieHellmanPrivate, chat.chat.partnerDiffieHellmanPublic)
         )
-        chat.chat.sentChainKey = newKeyB
-        chat.chat.rootKey = newKeyB
+        chat.chat.rootKey = newRootChainKey.first
+        chat.chat.sentChainKey = newRootChainKey.second
         coroutineScope.launch {
             db.chatDao().update(chat.chat)
         }

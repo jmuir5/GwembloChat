@@ -17,6 +17,7 @@ data class Chat(
     var selfDiffieHellmanPublic: ByteArray = byteArrayOf(),
     //var partnerDiffieHellmanPrivate: ByteArray = byteArrayOf(),
     var partnerDiffieHellmanPublic: ByteArray = byteArrayOf(),
+    //val partnerIdentiryPublicKey
 
 
     var rootKey: ByteArray = byteArrayOf(),

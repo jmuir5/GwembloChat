@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.google.firebase.auth.FirebaseAuth
+import com.noxapps.gwemblochat.crypto.ECDH
 import com.noxapps.gwemblochat.data.AppDatabase
 import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.FirebaseDBInteractor
@@ -35,11 +36,13 @@ fun ChatPage(
 ){
     //var chatList = viewModel.getAll().collectAsState(initial = emptyList())
     var chatObject by remember { mutableStateOf(Relationships.ChatWithUser(Chat(), User())) }
+    var thisUser by remember { mutableStateOf(User()) }
     val messages = viewModel.getMessages(chatObject.user.userId).collectAsState(initial = null)
 
     val message = remember{ mutableStateOf("")}
     LaunchedEffect(coroutineScope) {
         chatObject = db.chatDao().getChatWithUserById(chatId)
+        thisUser = db.userDao().getOneById(auth.currentUser!!.uid)
         //listOfGifts = db.userDao().getOneWithGiftsAndListsById(user.userId).giftsWithLists//.giftDao().getGiftsWithLists()
     }
 
@@ -68,13 +71,23 @@ fun ChatPage(
                 message = message,
                 enabled = true,
                 onSend = {
+                    val encryptedMessage = ECDH.ratchetEncrypt(
+                        chatObject.chat,
+                        message.value,
+                        thisUser.identityPrivateKey + chatObject.user.identityPublicKey,
+                        db,
+                        coroutineScope
+                    )
                     val messageObject = auth.currentUser?.let {
                         Message(
                             remoteId = chatObject.user.userId,
                             recipientId = chatObject.user.userId,
                             sender = it.uid,
-                            messageNum = messages.value?.size?: 0 ,
-                            plainText = message.value
+                            cypherText = encryptedMessage.second,
+                            messageNum = chatObject.chat.messagesSent,
+                            plainText = message.value,
+                            dhPublicKey = chatObject.chat.selfDiffieHellmanPublic,
+                            chainLength = chatObject.chat.previousChainLength,
                         )
                     }
 

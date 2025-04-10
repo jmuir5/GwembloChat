@@ -114,6 +114,26 @@ fun NewChatPage(
                 enabled = true,
                 labelText = "Message"
             ) {
+
+                val newChat = recipient.value?.let { recipient ->
+                    auth.currentUser?.let {
+                        Chat.initNewChat(
+                            ownerId = it.uid,
+                            partnerId = recipient.userId,
+                            partnerDHPublicKey = recipient.identityPublicKey,
+                            secretKey = ECDH.doECDH(user.identityPrivateKey, recipient.identityPublicKey)
+                        )
+                    }
+                }
+                val encryptedMessage = newChat?.let {
+                    ECDH.ratchetEncrypt(
+                        it,
+                        firstMessage.value,
+                        user.identityPrivateKey + recipient.value!!.identityPublicKey,
+                        db,
+                        coroutineScope
+                    )
+                }
                 val message = auth.currentUser?.let {currentUser ->
                     recipient.value?.let { recipient ->
                         Message(
@@ -121,31 +141,24 @@ fun NewChatPage(
                             recipientId = recipient.userId,
                             sender = currentUser.uid,
                             messageNum = 0,
-                            plainText = firstMessage.value
+                            plainText = firstMessage.value,
+                            dhPublicKey = newChat!!.selfDiffieHellmanPublic,
+                            chainLength = 0
                         )
                     }
                 }
+
                 val sentMessage = auth.currentUser?.let {currentUser ->
                     recipient.value?.let { recipient ->
                         Message(
                             remoteId = currentUser.uid,
                             recipientId = recipient.userId,
                             sender = currentUser.uid,
+                            cypherText = encryptedMessage!!.second,
                             messageNum = 0,
-                            plainText = firstMessage.value
+                            dhPublicKey = newChat.selfDiffieHellmanPublic,
+                            chainLength = 0
                         )
-                    }
-                }
-                val newChat = recipient.value?.let { recipient ->
-                    message?.let { msg ->
-                        auth.currentUser?.let {
-                            Chat.initNewChat(
-                                ownerId = it.uid,
-                                partnerId = recipient.userId,
-                                partnerDHPublicKey = recipient.identityPublicKey,
-                                secretKey = ECDH.doECDH(user.identityPrivateKey, recipient.identityPublicKey)
-                            )
-                        }
                     }
                 }
                 sentMessage?.let {

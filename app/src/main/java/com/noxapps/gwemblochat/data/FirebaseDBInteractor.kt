@@ -114,22 +114,33 @@ class FirebaseDBInteractor {
                     //Log.w("Message Listener", "dataSnapshot.children.first(): ${dataSnapshot.children.first()}" )
 
                     if(dataSnapshot.hasChildren()){
-                        val message = dataSnapshot.children.first().getValue(Message::class.java)?.let { Message(it) }
                         coroutineScope.launch {
-                            message?.let{
-                                db.messageDao().insert(it)
-                                val chat = db.chatDao().getChatByIds(it.sender, it.recipientId)
-                                db.chatDao().update(Chat(chat, it.messageId))
+                            for (messageRaw in dataSnapshot.children) {
+                                val message = messageRaw.getValue(Message::class.java)?.let {
+                                    val chatWUAAM = db.chatDao().getChatByIdWithAllMessages(it.sender)
+                                    val associatedData = byteArrayOf()
+                                    Message.pullMessage(
+                                        Message(it),
+                                        chatWUAAM,
+                                        db,
+                                        associatedData,
+                                        coroutineScope
+                                    )
+                                }
+                                message?.let {
+                                    db.messageDao().insert(it)
+                                    val chat = db.chatDao().getChatByIds(it.sender, it.recipientId)
+                                    db.chatDao().update(Chat(chat, it.messageId))
+                                }
+                            }
+
+
+                            MainScope().launch{
+                                dataSnapshot.ref.removeValue()
                             }
                         }
 
                     }
-
-
-
-
-                    //dataSnapshot.children.first().ref.removeValue()
-
                     Log.w("Message Listener", "loadPost:onDataChange - finished" )
                 }
 
@@ -164,8 +175,16 @@ class FirebaseDBInteractor {
                         messageRequest?.let {
 
                             coroutineScope.launch {
-                                val newMessage = Message(it.message)
-
+                                val newMessage = it.message
+                                val chatWUAAM = db.chatDao().getChatByIdWithAllMessages(newMessage.sender)
+                                val associatedData = byteArrayOf()
+                                Message.pullMessage(
+                                    Message(newMessage),
+                                    chatWUAAM,
+                                    db,
+                                    associatedData,
+                                    coroutineScope
+                                )
                                 try {
                                     db.messageDao().insert(newMessage)
                                     val chat = auth.currentUser?.let {
@@ -193,6 +212,7 @@ class FirebaseDBInteractor {
                                     Log.d("messageRequester", "failed to insert, $e")
                                 }
                             }
+
                         }
 
 

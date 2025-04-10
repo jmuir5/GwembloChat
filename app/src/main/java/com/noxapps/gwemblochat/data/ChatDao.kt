@@ -42,7 +42,7 @@ interface ChatDao {
 
     @Transaction
     @Query("SELECT * FROM  Chat where id = :id LIMIT 1")
-    fun getChatByIdWithAllMessages(id: Int): ChatWithUserAndAllMessages
+    fun getChatByIdWithAllMessages(id: String): ChatWithUserAndAllMessages
 
     @Query("SELECT * FROM Chat where ownerId = :ownerId and partnerId = :partnerId LIMIT 1")
     suspend fun getChatByIds(ownerId: String, partnerId: String): Chat
