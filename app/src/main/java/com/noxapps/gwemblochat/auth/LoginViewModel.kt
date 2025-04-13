@@ -149,7 +149,7 @@ class LoginViewModel(
                     Log.d("register", "createUserWithEmail:success")
                     val user = auth.currentUser
                     user?.let {
-                        val newUser =  User.init(it.uid, email, userName)
+                        val newUser =  User.init(it.uid, userName, email)
                         coroutineScope.launch{
                             db.userDao().insert(newUser)
                             FirebaseDBInteractor.upsertUser(newUser)

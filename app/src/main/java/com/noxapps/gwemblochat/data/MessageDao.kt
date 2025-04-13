@@ -34,4 +34,8 @@ interface MessageDao {
     @Query("SELECT * FROM Message where remoteId = :id")
     fun getAllMessagesByRemoteId(id: String): Flow<List<Message>>
 
+    @Transaction
+    @Query("SELECT * FROM Message where remoteId = :id")
+    suspend fun getAllMessagesByLocalId(id: String): List<Message>
+
 }

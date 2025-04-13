@@ -1,5 +1,6 @@
 package com.noxapps.gwemblochat.data
 
+import android.util.Log
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.noxapps.gwemblochat.crypto.ECDH
@@ -10,7 +11,7 @@ data class Chat(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val ownerId: String = "",
     val partnerId: String = "",
-    val lastMessageId: String = "",
+    var lastMessageId: String = "",
     //val activated : Boolean=true,
     //double ratchet data
     var selfDiffieHellmanPrivate: ByteArray = byteArrayOf(),
@@ -40,6 +41,12 @@ data class Chat(
             secretKey: ByteArray,
         ):Chat{
             val keyPair = ECDH.generateKeyPair()
+            Log.d("keycheck - selfDH", "selfDH: ${keyPair.first.toB64String()}")
+            Log.d("keycheck - partnerDH", "partnerDH: ${partnerDHPublicKey.toB64String()}")
+            Log.d("keycheck - secretKey", "secretKey: ${secretKey.toB64String()}")
+
+            //Log.d("keycheck - rootkey", "rootKey: ${chat.chat.rootKey.toB64String()}")
+            //Log.d("keycheck - chainkey", "chainKey: ${chat.chat.receivedChainKey.toB64String()}")
             return Chat(
                 ownerId = ownerId,
                 partnerId = partnerId,
@@ -48,6 +55,24 @@ data class Chat(
                 partnerDiffieHellmanPublic = partnerDHPublicKey,
                 rootKey = ECDH.kdfRK(secretKey, ECDH.doECDH(keyPair.first, partnerDHPublicKey)).first,
                 sentChainKey = ECDH.kdfRK(secretKey, ECDH.doECDH(keyPair.first, partnerDHPublicKey)).second,
+                //state.RK, state.CKs = KDF_RK(SK, DH(state.DHs, state.DHr))
+            )
+        }
+        fun receiveNewChat(
+            ownerId: String,
+            partnerId: String,
+            partnerDHPublicKey: ByteArray,
+            secretKey: ByteArray,
+        ):Chat{
+            val keyPair = ECDH.generateKeyPair()
+            return Chat(
+                ownerId = ownerId,
+                partnerId = partnerId,
+                selfDiffieHellmanPrivate = keyPair.first,
+                selfDiffieHellmanPublic = keyPair.second,
+                partnerDiffieHellmanPublic = partnerDHPublicKey,
+                rootKey = secretKey,
+                sentChainKey = byteArrayOf(),
                 //state.RK, state.CKs = KDF_RK(SK, DH(state.DHs, state.DHr))
             )
         }

@@ -1,5 +1,6 @@
 package com.noxapps.gwemblochat.chat
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -22,6 +23,7 @@ import com.noxapps.gwemblochat.data.FirebaseDBInteractor
 import com.noxapps.gwemblochat.data.Message
 import com.noxapps.gwemblochat.data.Relationships
 import com.noxapps.gwemblochat.data.User
+import com.noxapps.gwemblochat.data.toB64String
 import com.noxapps.gwemblochat.ui.theme.GwembloChatTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -43,6 +45,7 @@ fun ChatPage(
     LaunchedEffect(coroutineScope) {
         chatObject = db.chatDao().getChatWithUserById(chatId)
         thisUser = db.userDao().getOneById(auth.currentUser!!.uid)
+        Log.d("chainkey", "opened chatPage. chainkey = ${chatObject.chat.sentChainKey.toB64String()}")
         //listOfGifts = db.userDao().getOneWithGiftsAndListsById(user.userId).giftsWithLists//.giftDao().getGiftsWithLists()
     }
 
@@ -74,29 +77,48 @@ fun ChatPage(
                     val encryptedMessage = ECDH.ratchetEncrypt(
                         chatObject.chat,
                         message.value,
-                        thisUser.identityPrivateKey + chatObject.user.identityPublicKey,
+                        ECDH.doECDH(thisUser.identityPrivateKey, chatObject.user.identityPublicKey),
                         db,
                         coroutineScope
                     )
+
+                    coroutineScope.launch {
+                        Log.d("chainkey", "opened chatPage. chainkey = ${chatObject.chat.sentChainKey.toB64String()}")
+                        db.chatDao().upsert(chatObject.chat)
+                    }
                     val messageObject = auth.currentUser?.let {
                         Message(
                             remoteId = chatObject.user.userId,
                             recipientId = chatObject.user.userId,
                             sender = it.uid,
-                            cypherText = encryptedMessage.second,
+                            _cypherText = encryptedMessage.second.toB64String(),
                             messageNum = chatObject.chat.messagesSent,
                             plainText = message.value,
-                            dhPublicKey = chatObject.chat.selfDiffieHellmanPublic,
+                            _dhPublicKey = chatObject.chat.selfDiffieHellmanPublic.toB64String(),
                             chainLength = chatObject.chat.previousChainLength,
                         )
                     }
+                    val sentMessage = auth.currentUser?.let {currentUser ->
+                        Message(
+                            remoteId = currentUser.uid,
+                            recipientId = chatObject.chat.partnerId,
+                            sender = currentUser.uid,
+                            _cypherText = encryptedMessage.second.toB64String(),
+                            messageNum = chatObject.chat.messagesSent-1,
+                            _dhPublicKey = chatObject.chat.selfDiffieHellmanPublic.toB64String(),
+                            chainLength = chatObject.chat.previousChainLength
+                        )
+                    }
+                    sentMessage?.let { FirebaseDBInteractor.upsertMessage(it) }
 
                     messageObject?.let {
                         coroutineScope.launch {
                             db.messageDao().insert(it)
-                            db.chatDao().update(Chat(chatObject.chat, it.messageId))
+                            Log.d("chainkey", "opened chatPage. chainkey = ${chatObject.chat.sentChainKey.toB64String()}")
+                            chatObject.chat.lastMessageId = it.messageId
+                            db.chatDao().update(chatObject.chat)
                         }
-                        FirebaseDBInteractor.upsertMessage(it)
+
                     }
                     message.value = ""
                 }

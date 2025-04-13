@@ -1,11 +1,13 @@
 package com.noxapps.gwemblochat.home
 
+import android.util.Log
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -31,6 +33,18 @@ fun HomePage(
 
 ){
     val chatList = viewModel.getAll().collectAsState(initial = emptyList())
+
+    LaunchedEffect(true) {
+        val user = auth.currentUser?.let { db.userDao().getOneById(it.uid) }
+        user?.let {
+            Log.d("private key", it._identityPrivateKey)
+            Log.d("private key size", it.identityPrivateKey.size.toString())
+            Log.d("private key to str", it.identityPrivateKey.toString())
+            Log.d("private key dec to str", it.identityPrivateKey.decodeToString())
+
+        }
+
+    }
     Scaffold(
         topBar = {
             HomeHeader(text = "GwembloChat"){

@@ -19,13 +19,26 @@ data class Message(
     val remoteId: String = "",
     val recipientId: String = "",
     val sender: String = "", //remove?
-    val cypherText: ByteArray = byteArrayOf(),
-    @Exclude var plainText: String = "",
-    @Exclude val messageKey: ByteArray = byteArrayOf(),
-    var dhPublicKey: ByteArray = byteArrayOf(),
+    var _cypherText: String = byteArrayOf().toB64String(),
+    @Exclude @set:Exclude @get:Exclude var plainText: String = "",
+    @Exclude @get:Exclude val messageKey: ByteArray = byteArrayOf(),
+    var _dhPublicKey: String = byteArrayOf().toB64String(),
     val chainLength: Int = 0,
     val messageNum: Int = 0,
 ) {
+
+    var cypherText:ByteArray
+        @Exclude get() {return java.util.Base64.getDecoder().decode(_cypherText)}
+        @Exclude set(value) {
+            _cypherText = java.util.Base64.getEncoder().encodeToString(value)
+        }
+
+    var dhPublicKey:ByteArray
+        @Exclude get() {return java.util.Base64.getDecoder().decode(_dhPublicKey)}
+        @Exclude set(value) {
+            _dhPublicKey = java.util.Base64.getEncoder().encodeToString(value)
+        }
+
     companion object{
         fun pullMessage(
             message: Message,
@@ -47,10 +60,10 @@ data class Message(
                 remoteId = message.remoteId,
                 recipientId = message.recipientId,
                 sender = message.sender,
-                cypherText = message.cypherText,
+                _cypherText = message.cypherText.toB64String(),
                 plainText = decryptedMessage,
                 messageKey = messageKey,
-                dhPublicKey = message.dhPublicKey,
+                _dhPublicKey = message.dhPublicKey.toB64String(),
                 chainLength = message.chainLength,
                 messageNum = message.messageNum,
             )
@@ -64,10 +77,10 @@ data class Message(
         remoteId = oldMessage.remoteId,
         recipientId = oldMessage.recipientId,
         sender = oldMessage.sender,
-        cypherText = oldMessage.cypherText,
+        _cypherText = oldMessage._cypherText,
         plainText = oldMessage.plainText,
         messageKey = oldMessage.messageKey,
-        dhPublicKey = oldMessage.dhPublicKey,
+        _dhPublicKey = oldMessage._dhPublicKey,
         chainLength = oldMessage.chainLength,
         messageNum = oldMessage.messageNum,
     )

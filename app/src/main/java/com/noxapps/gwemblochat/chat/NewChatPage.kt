@@ -19,6 +19,7 @@ import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.FirebaseDBInteractor
 import com.noxapps.gwemblochat.data.Message
 import com.noxapps.gwemblochat.data.User
+import com.noxapps.gwemblochat.data.toB64String
 import com.noxapps.gwemblochat.navigation.Paths
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
@@ -60,8 +61,14 @@ fun NewChatPage(
 
                         enabled = false
                         coroutineScope.launch {
-                            val localUser: User? = db.userDao().getOneByEmail(searchHolder)
-                            val existingChat:Chat? = db.chatDao().getChatByIds(auth.currentUser!!.uid, localUser!!.userId)
+                            val localUser: User = db.userDao().getOneByEmail(searchHolder)
+                            val existingChat:Chat? =
+                                try{
+                                    auth.currentUser?.let { db.chatDao().getChatByIds(it.uid, localUser.userId) }
+                                }
+                                catch (e:Exception){
+                                    null
+                                }
                             if(existingChat != null) {
                                 Log.d("NewChatPage", "existing chat: $existingChat")
                                 navController.navigate("${Paths.Chat.Path}/${existingChat.id}"){
@@ -117,11 +124,14 @@ fun NewChatPage(
 
                 val newChat = recipient.value?.let { recipient ->
                     auth.currentUser?.let {
+                        var crappySecretKey = "32 insecure bits".toByteArray()
+                        (crappySecretKey.size..32).map{crappySecretKey+=0}
+
                         Chat.initNewChat(
                             ownerId = it.uid,
                             partnerId = recipient.userId,
                             partnerDHPublicKey = recipient.identityPublicKey,
-                            secretKey = ECDH.doECDH(user.identityPrivateKey, recipient.identityPublicKey)
+                            secretKey = crappySecretKey//ECDH.doECDH(user.identityPrivateKey, recipient.identityPublicKey)
                         )
                     }
                 }
@@ -142,7 +152,7 @@ fun NewChatPage(
                             sender = currentUser.uid,
                             messageNum = 0,
                             plainText = firstMessage.value,
-                            dhPublicKey = newChat!!.selfDiffieHellmanPublic,
+                            _dhPublicKey = newChat!!.selfDiffieHellmanPublic.toB64String(),
                             chainLength = 0
                         )
                     }
@@ -154,9 +164,9 @@ fun NewChatPage(
                             remoteId = currentUser.uid,
                             recipientId = recipient.userId,
                             sender = currentUser.uid,
-                            cypherText = encryptedMessage!!.second,
+                            _cypherText = encryptedMessage!!.second.toB64String(),
                             messageNum = 0,
-                            dhPublicKey = newChat.selfDiffieHellmanPublic,
+                            _dhPublicKey = newChat.selfDiffieHellmanPublic.toB64String(),
                             chainLength = 0
                         )
                     }
@@ -172,17 +182,21 @@ fun NewChatPage(
                     catch (e:Exception){
                         Log.d("NewChatPage", "error inserting user: $e")
                     }
-                    message?.let { db.messageDao().insert(it) }
-                    newChat?.let {
-                        val newId = db.chatDao().insert(it).toInt()
-                        Log.d("NewChatPage", "chatID: $it.id")
+                    message?.let {
+                        db.messageDao().insert(it)
+                        newChat?.let { chat ->
+                            chat.lastMessageId = it.messageId
+                            val newId = db.chatDao().insert(chat).toInt()
+                            Log.d("NewChatPage", "chatID: $chat.id")
 
-                        MainScope().launch{
-                            navController.navigate("${Paths.Chat.Path}/${newId}"){
-                                //todo pop last page
+                            MainScope().launch{
+                                navController.navigate("${Paths.Chat.Path}/${newId}"){
+                                    //todo pop last page
+                                }
                             }
                         }
                     }
+
 
                 }
 

@@ -1,15 +1,19 @@
 package com.noxapps.gwemblochat.crypto
 
+import android.util.Log
 import com.noxapps.gwemblochat.data.AppDatabase
 import com.noxapps.gwemblochat.data.Chat
 import com.noxapps.gwemblochat.data.Relationships.ChatWithUserAndAllMessages
+import com.noxapps.gwemblochat.data.toB64String
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.digests.SHA3Digest
+import org.bouncycastle.crypto.engines.AESEngine
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator
 import org.bouncycastle.crypto.macs.HMac
+import org.bouncycastle.crypto.modes.GCMBlockCipher
 import org.bouncycastle.crypto.modes.GCMSIVBlockCipher
 import org.bouncycastle.crypto.params.AEADParameters
 import org.bouncycastle.crypto.params.HKDFParameters
@@ -47,8 +51,21 @@ object ECDH{
     fun doECDH(selfPrivateKeyBytes: ByteArray, remotePublicKeyBytes: ByteArray): ByteArray {
         val agreement = X25519Agreement()
         val result = ByteArray(agreement.agreementSize)
-        agreement.init(X25519PrivateKeyParameters(selfPrivateKeyBytes))
-        agreement.calculateAgreement(X25519PublicKeyParameters(remotePublicKeyBytes), result, 0)
+        var localByteArray = selfPrivateKeyBytes.clone()
+        var remoteByteArray = remotePublicKeyBytes.clone()
+        while(localByteArray.size<32){
+            localByteArray += 0
+        }
+        while(remoteByteArray.size<32){
+            remoteByteArray += 0
+        }
+
+        if(localByteArray.size>32){} //
+        Log.d("selfPrivateKey", localByteArray.toB64String())
+        Log.d("remotePublicKey", remoteByteArray.toB64String())
+
+        agreement.init(X25519PrivateKeyParameters(localByteArray))
+        agreement.calculateAgreement(X25519PublicKeyParameters(remoteByteArray), result, 0)
         return result
     }
 
@@ -148,32 +165,49 @@ object ECDH{
         plaintext: ByteArray,
         associatedData:ByteArray
     ):ByteArray{
-        val siv = GCMSIVBlockCipher()
+        Log.d("messageKey - sending", "messageKey =  ${messageKey.toB64String()}")
+
+        val siv = GCMBlockCipher.newInstance(AESEngine.newInstance())//GCMSIVBlockCipher()
         val digest = SHA3Digest(512)
         val nonce = ByteArray(digest.digestSize)
-        val result = ByteArray(plaintext.size)
         digest.update(plaintext, 0, plaintext.size)
         digest.doFinal(nonce, 0)
 
-        siv.init(true, AEADParameters(KeyParameter(messageKey), 128, nonce, associatedData))
-        siv.processBytes(plaintext, 0, plaintext.size, result, 0)
-        siv.doFinal(result, plaintext.size)
+        siv.init(true, AEADParameters(KeyParameter(messageKey), 128, byteArrayOf(0), associatedData))
+        //siv.processBytes(plaintext, 0, plaintext.size, result, 0)
+        val result = ByteArray(siv.getOutputSize(plaintext.size))
+
+        val resultSize = siv.processBytes(plaintext, 0, plaintext.size, result, 0)
+        siv.doFinal(result, resultSize)
+        Log.d("messageSize", "enc - plainText =  ${plaintext.size}")
+        Log.d("messageSize", "enc - encrypted =  ${result.size}")
         return result
     }
 
     //Returns the AEAD decryption of ciphertext with message key mk. If authentication fails, an
     // exception will be raised that terminates processing.
-    fun decrypt(messageKey:ByteArray, ciphertext:ByteArray, associatedData:ByteArray):ByteArray{
-        val siv = GCMSIVBlockCipher()
+    fun decrypt(
+        messageKey:ByteArray,
+        ciphertext:ByteArray,
+        associatedData:ByteArray
+    ):ByteArray{
+        Log.d("messageKey - receiving", "messageKey =  ${messageKey.toB64String()}")
+
+        val siv = GCMBlockCipher.newInstance(AESEngine.newInstance())//GCMSIVBlockCipher()
         val digest = SHA3Digest(512)
         val nonce = ByteArray(digest.digestSize)
-        val result = ByteArray(ciphertext.size)
         digest.update(ciphertext, 0, ciphertext.size)
         digest.doFinal(nonce, 0)
 
-        siv.init(false, AEADParameters(KeyParameter(messageKey), 128, nonce, associatedData))
-        siv.processBytes(ciphertext, 0, ciphertext.size, result, 0)
-        siv.doFinal(result, ciphertext.size)
+        siv.init(true, AEADParameters(KeyParameter(messageKey), 128, byteArrayOf(0), associatedData))
+        //siv.processBytes(ciphertext, 0, ciphertext.size, result, 0)
+        val result = ByteArray(siv.getOutputSize(ciphertext.size))
+
+        val resultSize = siv.processBytes(ciphertext, 0, ciphertext.size, result, 0)
+
+        siv.doFinal(result, resultSize)
+        Log.d("messageSize", "dec - cipherText =  ${ciphertext.size}")
+        Log.d("messageSize", "dec - decrypted =  ${result.size}")
         return result
     }
 
@@ -196,45 +230,70 @@ object ECDH{
     fun ratchetEncrypt(
         chat:Chat,
         plaintext:String,
-        associatedData:ByteArray,
+        associatedDatax:ByteArray,
         db: AppDatabase,
         coroutineScope: CoroutineScope
     ):Pair<Header, ByteArray>{
+        val associatedData = byteArrayOf(0)
         val (chainKey, messageKey)  = kdfCK(chat.sentChainKey)
         chat.sentChainKey = chainKey
+        Log.d("AD - sending - Header", "dhPublicKey =  ${chat.selfDiffieHellmanPublic.toB64String()}")
+        Log.d("AD - sending - Header", "previousChainLength =  ${chat.previousChainLength}")
+        Log.d("AD - sending - Header", "messageNum =  ${chat.messagesSent}")
+        Log.d("AD - sending - associatedData", "AD =  ${associatedData.toB64String()}")
+
+
         val header = header(chat.selfDiffieHellmanPublic, chat.previousChainLength, chat.messagesSent)
         chat.messagesSent += 1
         coroutineScope.launch {
             db.chatDao().update(chat)
         }
-        return Pair(header, encrypt(messageKey, plaintext.toByteArray(), concat(associatedData, header)))
+        val encrypted = encrypt(messageKey, plaintext.encodeToByteArray(), concat(associatedData, header))
+        Log.d("messageSize", "plainText =  ${plaintext.length}")
+        Log.d("messageSize", "encrypted =  ${encrypted.size}")
+
+        return Pair(header, encrypted)
     }
 
     fun ratchetDecrypt(
         chatWUAAM: ChatWithUserAndAllMessages,
         header: Header,
         cypherText:ByteArray,
-        associatedData:ByteArray,
+        associatedDatax:ByteArray,
         db: AppDatabase,
         coroutineScope: CoroutineScope
     ):String{
+        val associatedData = byteArrayOf(0)
+        Log.d("AD - receiving - Header", "dhPublicKey =  ${header.dhPublicKey.toB64String()}")
+        Log.d("AD - receiving - Header", "previousChainLength =  ${header.chainLength}")
+        Log.d("AD - receiving - Header", "messageNum =  ${header.messageNumber}")
+        Log.d("AD - receiving - associatedData", "AD =  ${associatedData.toB64String()}")
+
         val plaintext = trySkippedMessages(chatWUAAM, header, cypherText, associatedData, db)
         if(plaintext != null){
             return plaintext
         }
         else{
-            if(header.dhPublicKey != chatWUAAM.chat.partnerDiffieHellmanPublic) {
+            if(!header.dhPublicKey.contentEquals(chatWUAAM.chat.partnerDiffieHellmanPublic)) {
                 skipMessageKeys(chatWUAAM, header.chainLength, db, coroutineScope)
                 dhRatchet(chatWUAAM, header, db, coroutineScope)
             }
             skipMessageKeys(chatWUAAM, header.messageNumber, db, coroutineScope)
-            val messageKey = kdfCK(chatWUAAM.chat.sentChainKey).second
-            chatWUAAM.chat.sentChainKey = messageKey
+            val (chainKey, messageKey) = kdfCK(chatWUAAM.chat.receivedChainKey)
+            chatWUAAM.chat.receivedChainKey = chainKey
+            Log.d("chainkey", "BANG, ChainKey set to ${messageKey.toB64String()}")
+
             chatWUAAM.chat.messagesReceived+=1
             coroutineScope.launch {
                 db.chatDao().update(chatWUAAM.chat)
             }
-            return decrypt(messageKey, cypherText, concat(associatedData, header)).toString()
+            val decrypted = decrypt(messageKey, cypherText, concat(associatedData, header)).copyOfRange(0, cypherText.size-16)
+            Log.d("decrypted", "decrypted.toString: ${decrypted}")
+            Log.d("decrypted", "decrypted.decodeToString: ${decrypted.decodeToString()}")
+            Log.d("decrypted", "decrypted.toB64String: ${decrypted.toB64String()}")
+            Log.d("messageSize", "plainText =  ${cypherText.size}")
+            Log.d("messageSize", "decrypted =  ${decrypted.size}")
+            return decrypted.decodeToString()
         }
     }
 
@@ -262,6 +321,7 @@ object ECDH{
             while (chat.chat.messagesReceived < until) {
                 val messageKey = kdfCK(chat.chat.sentChainKey).second
                 chat.chat.sentChainKey = messageKey
+                Log.d("chainkey", "BANG, ChainKey set to ${messageKey.toB64String()}")
                 chat.chat.messagesReceived += 1
                 coroutineScope.launch {
                     db.chatDao().update(chat.chat)
@@ -280,12 +340,20 @@ object ECDH{
         chat.chat.messagesReceived = 0
         chat.chat.messagesSent = 0
         chat.chat.partnerDiffieHellmanPublic = header.dhPublicKey
+        Log.d("keycheck - selfDH", "selfDH: ${chat.chat.selfDiffieHellmanPrivate.toB64String()}")
+        Log.d("keycheck - partnerDH", "partnerDH: ${chat.chat.partnerDiffieHellmanPublic.toB64String()}")
+        Log.d("keycheck - rootkey", "rootKey: ${chat.chat.rootKey.toB64String()}")
+        Log.d("keycheck - chainkey", "chainKey: ${chat.chat.receivedChainKey.toB64String()}")
         var newRootChainKey = kdfRK(
             chat.chat.rootKey,
             doECDH(chat.chat.selfDiffieHellmanPrivate, chat.chat.partnerDiffieHellmanPublic)
         )
         chat.chat.rootKey = newRootChainKey.first
         chat.chat.receivedChainKey = newRootChainKey.second
+        Log.d("keycheck - selfDH", "selfDH: ${chat.chat.selfDiffieHellmanPrivate.toB64String()}")
+        Log.d("keycheck - partnerDH", "partnerDH: ${chat.chat.partnerDiffieHellmanPublic.toB64String()}")
+        Log.d("keycheck - rootkey", "rootKey: ${chat.chat.rootKey.toB64String()}")
+        Log.d("keycheck - chainkey", "chainKey: ${chat.chat.receivedChainKey.toB64String()}")
         val neeSelfDHKey = generateKeyPair()
         chat.chat.selfDiffieHellmanPrivate = neeSelfDHKey.first
         chat.chat.selfDiffieHellmanPublic = neeSelfDHKey.second
@@ -295,6 +363,7 @@ object ECDH{
         )
         chat.chat.rootKey = newRootChainKey.first
         chat.chat.sentChainKey = newRootChainKey.second
+        Log.d("chainkey", "BANG, ChainKey set to ${newRootChainKey.second.toB64String()}")
         coroutineScope.launch {
             db.chatDao().update(chat.chat)
         }

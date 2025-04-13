@@ -1,6 +1,8 @@
 package com.noxapps.gwemblochat.navigation
 
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -18,10 +20,12 @@ import com.google.firebase.ktx.Firebase
 import com.noxapps.gwemblochat.auth.LoginPage
 import com.noxapps.gwemblochat.chat.ChatPage
 import com.noxapps.gwemblochat.chat.NewChatPage
+import com.noxapps.gwemblochat.crypto.ECDH
 import com.noxapps.gwemblochat.data.AppDatabase
 import com.noxapps.gwemblochat.data.FirebaseDBInteractor
 import com.noxapps.gwemblochat.data.SampleData
 import com.noxapps.gwemblochat.home.HomePage
+import java.util.Base64
 
 @Composable
 fun NavMain(){
@@ -36,6 +40,17 @@ fun NavMain(){
 
     val currentUser = remember { mutableStateOf( SampleData.nullUser ) }
     val startPoint = if(auth.currentUser == null) Paths.Login.Path else Paths.Home.Path
+
+    LaunchedEffect(true) {
+        val testPrivateKey = ECDH.generatePrivateKey()
+        Log.d("private key size", testPrivateKey.size.toString())
+        Log.d("private key to str", testPrivateKey.toString())
+        Log.d("private key dec to str",testPrivateKey.decodeToString())
+        Log.d("private key", Base64.getEncoder().encodeToString(testPrivateKey))
+
+
+
+    }
 
 
 

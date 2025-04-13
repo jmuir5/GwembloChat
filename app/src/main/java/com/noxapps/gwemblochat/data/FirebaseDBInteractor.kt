@@ -114,31 +114,57 @@ class FirebaseDBInteractor {
                     //Log.w("Message Listener", "dataSnapshot.children.first(): ${dataSnapshot.children.first()}" )
 
                     if(dataSnapshot.hasChildren()){
+
                         coroutineScope.launch {
-                            for (messageRaw in dataSnapshot.children) {
-                                val message = messageRaw.getValue(Message::class.java)?.let {
-                                    val chatWUAAM = db.chatDao().getChatByIdWithAllMessages(it.sender)
-                                    val associatedData = byteArrayOf()
-                                    Message.pullMessage(
-                                        Message(it),
-                                        chatWUAAM,
-                                        db,
-                                        associatedData,
-                                        coroutineScope
-                                    )
+                            try {
+                                for (messageRaw in dataSnapshot.children) {
+                                    val message =
+                                        messageRaw.getValue(Message::class.java)?.let { msg ->
+                                            auth.currentUser?.let { usr ->
+                                                val chat =
+                                                    if (usr.uid != msg.sender) db.chatDao()
+                                                        .getChatByIds(usr.uid, msg.sender)
+                                                    else db.chatDao()
+                                                        .getChatByIds(usr.uid, msg.remoteId)
+                                                val me = db.userDao().getOneById(usr.uid)
+                                                val them = db.userDao().getOneById(chat.partnerId)
+                                                val messages =
+                                                    db.messageDao().getAllMessagesByLocalId(usr.uid)
+                                                val chatWUAAM =
+                                                    Relationships.ChatWithUserAndAllMessages(
+                                                        chat = chat,
+                                                        user = them,
+                                                        messages = messages
+                                                    )
+                                                val associatedData = ECDH.doECDH(me.identityPrivateKey, them.identityPublicKey)
+
+                                                Message.pullMessage(
+                                                    Message(msg),
+                                                    chatWUAAM,
+                                                    db,
+                                                    associatedData,
+                                                    coroutineScope
+                                                )
+                                            }
+                                        }
+                                    message?.let {
+                                        db.messageDao().insert(it)
+                                        val chat =
+                                            db.chatDao().getChatByIds(it.sender, it.recipientId)
+                                        chat.lastMessageId = it.messageId
+                                        db.chatDao().update(chat)
+                                    }
                                 }
-                                message?.let {
-                                    db.messageDao().insert(it)
-                                    val chat = db.chatDao().getChatByIds(it.sender, it.recipientId)
-                                    db.chatDao().update(Chat(chat, it.messageId))
-                                }
-                            }
 
 
-                            MainScope().launch{
-                                dataSnapshot.ref.removeValue()
+                                MainScope().launch {
+                                    dataSnapshot.ref.removeValue()
+                                }
+                            } catch (e: Exception) {
+                                Log.d("messageListner", "failed, $e")
                             }
                         }
+
 
                     }
                     Log.w("Message Listener", "loadPost:onDataChange - finished" )
@@ -176,34 +202,48 @@ class FirebaseDBInteractor {
 
                             coroutineScope.launch {
                                 val newMessage = it.message
-                                val chatWUAAM = db.chatDao().getChatByIdWithAllMessages(newMessage.sender)
+                                val chat = auth.currentUser?.let {
+                                    val currentUser = db.userDao().getOneById(it.uid)
+                                    var crappySecretKey = "32 insecure bits".toByteArray()
+                                    (crappySecretKey.size..32).map{crappySecretKey+=0}
+
+                                    Chat.receiveNewChat(
+                                        ownerId = it.uid,
+                                        partnerId = messageRequest.user.userId,
+                                        partnerDHPublicKey = messageRequest.user.identityPublicKey,
+                                        secretKey = crappySecretKey//ECDH.doECDH(currentUser.identityPrivateKey, messageRequest.user.identityPublicKey)
+                                    )
+
+                                }
+                                chat?.let{ chat2->chat2.lastMessageId = it.message.messageId}
+                                val chatWUAAM = chat?.let { it1 ->
+                                    Relationships.ChatWithUserAndAllMessages(
+                                        chat = it1,
+                                        user = it.user,
+                                        messages = listOf(it.message))
+                                }//db.chatDao().getChatByIdWithAllMessages(newMessage.sender)
                                 val associatedData = byteArrayOf()
-                                Message.pullMessage(
-                                    Message(newMessage),
-                                    chatWUAAM,
-                                    db,
-                                    associatedData,
-                                    coroutineScope
-                                )
+                                chatWUAAM?.let { it1 ->
+                                    Message.pullMessage(
+                                        Message(newMessage),
+                                        it1,
+                                        db,
+                                        associatedData,
+                                        coroutineScope
+                                    )
+                                }
                                 try {
                                     db.messageDao().insert(newMessage)
-                                    val chat = auth.currentUser?.let {
-                                        val currentUser = db.userDao().getOneById(it.uid)
-                                        Chat.initNewChat(
-                                            ownerId = it.uid,
-                                            partnerId = messageRequest.user.userId,
-                                            partnerDHPublicKey = messageRequest.user.identityPublicKey,
-                                            secretKey = ECDH.doECDH(currentUser.identityPrivateKey, messageRequest.user.identityPublicKey)
 
-                                        )
-                                    }
                                     try{
                                         db.userDao().insert(it.user)
                                     }
                                     catch (e: Exception){
                                         Log.d("messageRequester", "failed to insert, $e")
                                     }
-                                    chat?.let { db.chatDao().insert(it) }
+                                    chat?.let {
+                                        db.chatDao().insert(it)
+                                    }
                                     MainScope().launch{
                                         dataSnapshot.children.first().ref.removeValue()
                                     }
@@ -237,3 +277,5 @@ class FirebaseDBInteractor {
         }
     }
 }
+
+

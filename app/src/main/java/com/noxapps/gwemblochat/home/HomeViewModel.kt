@@ -27,8 +27,9 @@ class HomeViewModel(
     fun getAll() = db.chatDao().getAllChatsWithLastMessage(auth.currentUser!!.uid)
     var chatList = listOf<ChatWithUserAndLastMessage>()
     init{
-        FirebaseDBInteractor.attachMessageListener(auth, db, coroutineScope)
         FirebaseDBInteractor.attachMessageRequestListener(auth, db, coroutineScope)
+        FirebaseDBInteractor.attachMessageListener(auth, db, coroutineScope)
+
     }
     val random = Random(1)
     val chats = (0..10).map{
